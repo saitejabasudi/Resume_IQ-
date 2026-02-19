@@ -8,8 +8,9 @@ import InstallButton from "./components/InstallButton";
 
 function App() {
   const [file, setFile] = useState(null);
+  const [jobDescription, setJobDescription] = useState("");
   const [score, setScore] = useState(null);
-  const [feedback, setFeedback] = useState("");
+  const [jobMatch, setJobMatch] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const analyze = async () => {
@@ -17,6 +18,7 @@ function App() {
 
     const formData = new FormData();
     formData.append("resume", file);
+    formData.append("jobDescription", jobDescription);
 
     setLoading(true);
     setScore(null);
@@ -28,7 +30,7 @@ function App() {
       );
 
       setScore(res.data.atsScore);
-      setFeedback(res.data.feedback);
+      setJobMatch(res.data.jobMatch);
     } catch (err) {
       alert("Analysis failed");
     }
@@ -52,6 +54,14 @@ function App() {
           onChange={(e) => setFile(e.target.files[0])}
         />
 
+        <textarea
+          placeholder="Paste Job Description (Optional)"
+          className="w-full p-2 border rounded mb-4"
+          rows="4"
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+        />
+
         <button
           onClick={analyze}
           className="bg-yellow-400 w-full py-2 rounded-lg font-semibold"
@@ -72,9 +82,21 @@ function App() {
 
           <CircularScore score={score} />
 
-          <div className="mt-6 text-sm whitespace-pre-wrap">
-            {feedback}
-          </div>
+          {jobMatch && (
+            <div className="mt-6">
+              <h3 className="font-semibold mb-2">
+                Job Match: {jobMatch.matchScore}%
+              </h3>
+
+              <p className="text-green-600">
+                Matched Skills: {jobMatch.matched.join(", ") || "None"}
+              </p>
+
+              <p className="text-red-500 mt-2">
+                Missing Skills: {jobMatch.missing.join(", ") || "None"}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
