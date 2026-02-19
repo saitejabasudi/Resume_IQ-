@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { FaFileUpload, FaChartBar } from "react-icons/fa";
+import Navbar from "./components/Navbar";
 
 function App() {
   const [file, setFile] = useState(null);
@@ -23,7 +24,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gray-100 p-4 pb-24">
       <h1 className="text-2xl font-bold mb-6">Resume_IQ</h1>
 
       <div className="bg-white p-6 rounded-xl shadow-md">
@@ -62,6 +63,8 @@ function App() {
           </div>
         </div>
       )}
+
+      <Navbar />
     </div>
   );
 }
