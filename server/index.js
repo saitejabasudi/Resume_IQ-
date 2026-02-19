@@ -3,6 +3,7 @@ const cors = require("cors");
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
+const PDFDocument = require("pdfkit");
 
 const app = express();
 app.use(cors());
