@@ -12,6 +12,19 @@ const upload = multer();
 const PORT = 5000;
 
 /* ===================================
+        SKILL KEYWORDS DATABASE
+=================================== */
+
+const skillKeywords = [
+  "javascript", "react", "node", "python", "java",
+  "sql", "mongodb", "html", "css", "express",
+  "leadership", "communication", "teamwork",
+  "problem solving", "data analysis",
+  "machine learning", "aws", "docker",
+  "git", "api", "frontend", "backend"
+];
+
+/* ===================================
         ATS ANALYSIS ENGINE
 =================================== */
 
@@ -21,109 +34,68 @@ function analyzeResume(text) {
 
   const lowerText = text.toLowerCase();
 
-  /* =====================
-      SECTION CHECK
-  ====================== */
-
+  // Section check
   const sections = ["experience", "education", "skills", "projects"];
-  let sectionScore = 0;
-
   sections.forEach(section => {
-    if (lowerText.includes(section)) {
-      sectionScore += 10;
-    }
+    if (lowerText.includes(section)) score += 10;
   });
 
-  score += sectionScore;
-
-  /* =====================
-      KEYWORD CHECK
-  ====================== */
-
-  const keywords = [
-    "leadership",
-    "managed",
-    "developed",
-    "team",
-    "python",
-    "java",
-    "javascript",
-    "react",
-    "node",
-    "analysis",
-    "data",
-    "communication",
-    "problem solving"
-  ];
-
-  let keywordMatches = 0;
-
-  keywords.forEach(word => {
-    if (lowerText.includes(word)) {
-      keywordMatches++;
+  // Keyword check
+  let foundSkills = [];
+  skillKeywords.forEach(skill => {
+    if (lowerText.includes(skill)) {
+      foundSkills.push(skill);
       score += 3;
     }
   });
 
-  /* =====================
-      LENGTH CHECK
-  ====================== */
+  // Length check
+  if (text.length > 1000) score += 15;
 
-  if (text.length > 1000) {
-    score += 15;
-  } else {
-    feedback += "• Resume content is too short. Add more detailed experience.\n";
-  }
+  // Numbers check
+  if (text.match(/\d+/)) score += 10;
 
-  /* =====================
-      NUMBERS CHECK
-  ====================== */
-
-  if (text.match(/\d+/)) {
-    score += 10;
-  } else {
-    feedback += "• Add measurable achievements (numbers, % increase, etc).\n";
-  }
-
-  /* =====================
-      EMAIL CHECK
-  ====================== */
-
-  if (text.match(/@[a-zA-Z0-9.-]+/)) {
-    score += 5;
-  } else {
-    feedback += "• Add professional email address.\n";
-  }
-
-  /* =====================
-      FINAL SCORE LIMIT
-  ====================== */
+  // Email check
+  if (text.match(/@[a-zA-Z0-9.-]+/)) score += 5;
 
   score = Math.min(score, 100);
 
-  /* =====================
-      FEEDBACK GENERATION
-  ====================== */
-
-  feedback =
-    "Resume Analysis Report:\n\n" +
-    `✔ Sections Score: ${sectionScore}/40\n` +
-    `✔ Keywords Found: ${keywordMatches}\n` +
-    `✔ Overall ATS Score: ${score}/100\n\n` +
-    "Improvement Suggestions:\n" +
-    feedback +
-    "\n• Use bullet points.\n• Avoid images & graphics.\n• Use standard headings.\n• Keep formatting simple.\n";
-
-  return { score, feedback };
+  return { score, foundSkills };
 }
 
 /* ===================================
-        HEALTH CHECK
+        JOB MATCH FUNCTION
 =================================== */
 
-app.get("/", (req, res) => {
-  res.send("Resume IQ Free ATS Backend Running 🚀");
-});
+function matchJobDescription(resumeText, jobText) {
+  const resume = resumeText.toLowerCase();
+  const job = jobText.toLowerCase();
+
+  let matched = [];
+  let missing = [];
+
+  skillKeywords.forEach(skill => {
+    if (job.includes(skill)) {
+      if (resume.includes(skill)) {
+        matched.push(skill);
+      } else {
+        missing.push(skill);
+      }
+    }
+  });
+
+  let matchScore = 0;
+  if (matched.length + missing.length > 0) {
+    matchScore =
+      (matched.length / (matched.length + missing.length)) * 100;
+  }
+
+  return {
+    matchScore: Math.round(matchScore),
+    matched,
+    missing
+  };
+}
 
 /* ===================================
         ANALYZE API
@@ -131,10 +103,6 @@ app.get("/", (req, res) => {
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
     let text = "";
 
     if (req.file.mimetype === "application/pdf") {
@@ -147,20 +115,26 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       text = result.value;
     }
 
-    const result = analyzeResume(text);
+    const atsResult = analyzeResume(text);
+
+    let jobMatchResult = null;
+
+    if (req.body.jobDescription) {
+      jobMatchResult = matchJobDescription(
+        text,
+        req.body.jobDescription
+      );
+    }
 
     res.json({
       success: true,
-      atsScore: result.score,
-      feedback: result.feedback,
+      atsScore: atsResult.score,
+      foundSkills: atsResult.foundSkills,
+      jobMatch: jobMatchResult
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      error: "Resume analysis failed",
-    });
+    res.status(500).json({ error: "Analysis failed" });
   }
 });
 
