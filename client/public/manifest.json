@@ -1,0 +1,8 @@
+{
+  "short_name": "ResumeIQ",
+  "name": "Resume IQ - Free ATS Resume Analyzer",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#facc15",
+  "background_color": "#ffffff"
+}
