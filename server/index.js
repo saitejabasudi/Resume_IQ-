@@ -31,7 +31,6 @@ const skillKeywords = [
 
 function analyzeResume(text) {
   let score = 0;
-  let feedback = "";
 
   const lowerText = text.toLowerCase();
 
@@ -138,6 +137,65 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     res.status(500).json({ error: "Analysis failed" });
   }
 });
+
+/* ===================================
+        GENERATE PDF REPORT API
+=================================== */
+
+app.post("/generate-report", upload.single("resume"), async (req, res) => {
+  try {
+    let text = "";
+
+    if (req.file.mimetype === "application/pdf") {
+      const data = await pdfParse(req.file.buffer);
+      text = data.text;
+    } else {
+      const result = await mammoth.extractRawText({
+        buffer: req.file.buffer,
+      });
+      text = result.value;
+    }
+
+    const atsResult = analyzeResume(text);
+
+    const doc = new PDFDocument();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Resume_IQ_Report.pdf"
+    );
+
+    doc.pipe(res);
+
+    doc.fontSize(20).text("Resume IQ Analysis Report", {
+      align: "center",
+    });
+
+    doc.moveDown();
+    doc.fontSize(16).text(`ATS Score: ${atsResult.score}/100`);
+
+    doc.moveDown();
+    doc.fontSize(14).text("Detected Skills:");
+    doc.text(atsResult.foundSkills.join(", ") || "None");
+
+    doc.moveDown();
+    doc.text("Improvement Suggestions:");
+    doc.text("- Add measurable achievements");
+    doc.text("- Use job description keywords");
+    doc.text("- Keep formatting simple");
+    doc.text("- Include experience, education, skills sections");
+
+    doc.end();
+
+  } catch (error) {
+    res.status(500).json({ error: "PDF generation failed" });
+  }
+});
+
+/* ===================================
+        START SERVER
+=================================== */
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
