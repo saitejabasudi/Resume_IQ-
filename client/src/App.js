@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { FaFileUpload, FaChartBar } from "react-icons/fa";
+import { FaFileUpload } from "react-icons/fa";
 import Navbar from "./components/Navbar";
+import CircularScore from "./components/CircularScore";
 
 function App() {
   const [file, setFile] = useState(null);
@@ -49,16 +50,13 @@ function App() {
 
       {score !== null && (
         <div className="bg-white p-6 rounded-xl shadow-md mt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <FaChartBar className="text-green-500" />
-            <span className="font-semibold">ATS Score</span>
-          </div>
-
-          <h2 className="text-4xl font-bold text-center mb-4">
-            {score}/100
+          <h2 className="text-center font-semibold mb-4">
+            ATS Resume Score
           </h2>
 
-          <div className="text-sm whitespace-pre-wrap">
+          <CircularScore score={score} />
+
+          <div className="mt-6 text-sm whitespace-pre-wrap">
             {feedback}
           </div>
         </div>
