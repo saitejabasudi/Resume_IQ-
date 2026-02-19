@@ -3,11 +3,14 @@ import axios from "axios";
 import { FaFileUpload } from "react-icons/fa";
 import Navbar from "./components/Navbar";
 import CircularScore from "./components/CircularScore";
+import Loader from "./components/Loader";
+import InstallButton from "./components/InstallButton";
 
 function App() {
   const [file, setFile] = useState(null);
   const [score, setScore] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const analyze = async () => {
     if (!file) return alert("Upload resume first");
@@ -15,13 +18,22 @@ function App() {
     const formData = new FormData();
     formData.append("resume", file);
 
-    const res = await axios.post(
-      "http://localhost:5000/analyze",
-      formData
-    );
+    setLoading(true);
+    setScore(null);
 
-    setScore(res.data.atsScore);
-    setFeedback(res.data.feedback);
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/analyze",
+        formData
+      );
+
+      setScore(res.data.atsScore);
+      setFeedback(res.data.feedback);
+    } catch (err) {
+      alert("Analysis failed");
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -46,9 +58,13 @@ function App() {
         >
           Analyze Resume
         </button>
+
+        <InstallButton />
       </div>
 
-      {score !== null && (
+      {loading && <Loader />}
+
+      {score !== null && !loading && (
         <div className="bg-white p-6 rounded-xl shadow-md mt-6">
           <h2 className="text-center font-semibold mb-4">
             ATS Resume Score
