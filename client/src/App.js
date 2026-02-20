@@ -23,11 +23,10 @@ function App() {
     setLoading(true);
     setScore(null);
 
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/analyze",
-        formData
-      );
+  const res = await axios.post(
+  "/api/analyze",
+  formData
+);
 
       setScore(res.data.atsScore);
       setJobMatch(res.data.jobMatch);
