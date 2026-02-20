@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { FaFileUpload } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./components/Navbar";
 import CircularScore from "./components/CircularScore";
 import Loader from "./components/Loader";
