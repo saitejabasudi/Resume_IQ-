@@ -70,7 +70,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Could not extract text from file" });
       }
 
-      // ===== Skill Matching Logic =====
+      // ===== Simple Matching Logic =====
       const resumeWords = resumeText.toLowerCase().split(/\W+/);
       const jobWords = jobDescription.toLowerCase().split(/\W+/);
 
