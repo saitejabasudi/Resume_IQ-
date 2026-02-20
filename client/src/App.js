@@ -29,11 +29,7 @@ function App() {
       setScore(null);
       setJobMatch(null);
 
-      const res = await axios.post("/api/analyze", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = await axios.post("/api/analyze", formData);
 
       setScore(res.data.atsScore);
 
@@ -43,8 +39,9 @@ function App() {
         missingSkills: res.data.missingSkills,
       });
 
+      setPage("history");
+
     } catch (err) {
-      console.error(err);
       alert("Analysis failed");
     } finally {
       setLoading(false);
@@ -52,16 +49,17 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 pb-24">
+    <div className="min-h-screen bg-gray-100 pb-28">
 
-      {/* ================= HOME PAGE ================= */}
+      {/* ================= HOME ================= */}
       {page === "home" && (
-        <>
-          <h1 className="text-2xl font-bold mb-6 text-center">
-            Resume_IQ
+        <div className="p-4">
+          <h1 className="text-3xl font-bold mb-6">
+            Ready To Level Up Your Resume?
           </h1>
 
-          <div className="bg-white p-6 rounded-xl shadow-md">
+          <div className="bg-white p-6 rounded-2xl shadow-md">
+
             <div className="flex items-center gap-2 mb-4">
               <FaFileUpload className="text-yellow-400" />
               <span className="font-semibold">Upload Resume</span>
@@ -76,7 +74,7 @@ function App() {
 
             <textarea
               placeholder="Paste Job Description (Optional)"
-              className="w-full p-2 border rounded mb-4"
+              className="w-full p-3 border rounded-lg mb-4"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -84,72 +82,118 @@ function App() {
 
             <button
               onClick={analyze}
-              className="bg-yellow-400 w-full py-2 rounded-lg font-semibold hover:bg-yellow-500 transition"
+              className="bg-yellow-400 w-full py-3 rounded-xl font-semibold hover:bg-yellow-500 transition"
             >
-              Start Analyzing
+              AI Analysis
             </button>
 
-            <InstallButton />
+            <div className="mt-4">
+              <InstallButton />
+            </div>
+
           </div>
 
           {loading && <Loader />}
+        </div>
+      )}
 
-          {score !== null && !loading && (
-            <div className="bg-white p-6 rounded-xl shadow-md mt-6">
-              <h2 className="text-center font-semibold mb-4">
-                ATS Resume Score
-              </h2>
+      {/* ================= HISTORY ================= */}
+      {page === "history" && (
+        <div className="p-4">
+
+          <h2 className="text-2xl font-bold mb-4">Analysis Details</h2>
+
+          {score !== null ? (
+            <div className="bg-white rounded-2xl shadow-md p-6 text-center">
+
+              <p className="text-green-600 font-semibold mb-4">
+                ✔ Scanning Complete
+              </p>
 
               <CircularScore score={score} />
 
-              {jobMatch && (
-                <div className="mt-6">
-                  <h3 className="font-semibold mb-2 text-center">
-                    Job Match: {jobMatch.matchScore}%
-                  </h3>
+              <h3 className="mt-6 text-xl font-bold">
+                {score}/100 AI Resume Score
+              </h3>
 
-                  <p className="text-green-600 mt-2">
+              {jobMatch && (
+                <div className="mt-6 text-left">
+                  <p className="text-green-600 mb-2">
                     <strong>Matched Skills:</strong>{" "}
-                    {jobMatch.matchedSkills?.length > 0
-                      ? jobMatch.matchedSkills.join(", ")
-                      : "None"}
+                    {jobMatch.matchedSkills?.join(", ") || "None"}
                   </p>
 
-                  <p className="text-red-500 mt-2">
+                  <p className="text-red-500">
                     <strong>Missing Skills:</strong>{" "}
-                    {jobMatch.missingSkills?.length > 0
-                      ? jobMatch.missingSkills.join(", ")
-                      : "None"}
+                    {jobMatch.missingSkills?.join(", ") || "None"}
                   </p>
                 </div>
               )}
+
+              <button
+                onClick={() => setPage("home")}
+                className="bg-yellow-400 mt-6 w-full py-3 rounded-xl font-semibold"
+              >
+                Optimize Again
+              </button>
+
             </div>
+          ) : (
+            <p className="text-center mt-10">No analysis yet.</p>
           )}
-        </>
-      )}
-
-      {/* ================= HISTORY PAGE ================= */}
-      {page === "history" && (
-        <div className="text-center mt-20 text-lg">
-          📄 Resume History (Coming Soon)
         </div>
       )}
 
-      {/* ================= TIPS PAGE ================= */}
+      {/* ================= TIPS ================= */}
       {page === "tips" && (
-        <div className="text-center mt-20 text-lg">
-          ⭐ Resume Improvement Tips (Coming Soon)
+        <div className="p-4">
+          <h2 className="text-2xl font-bold mb-4">Resume Tips</h2>
+
+          <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
+
+            <div>
+              <h3 className="font-semibold">✔ Use Keywords</h3>
+              <p className="text-gray-600">
+                Match your resume with job description keywords.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold">✔ Keep It Clean</h3>
+              <p className="text-gray-600">
+                Use simple fonts and proper spacing.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold">✔ Highlight Achievements</h3>
+              <p className="text-gray-600">
+                Show measurable results instead of responsibilities.
+              </p>
+            </div>
+
+          </div>
         </div>
       )}
 
-      {/* ================= PROFILE PAGE ================= */}
+      {/* ================= PROFILE ================= */}
       {page === "profile" && (
-        <div className="text-center mt-20 text-lg">
-          👤 User Profile (Coming Soon)
+        <div className="p-4">
+          <h2 className="text-2xl font-bold mb-4">User Profile</h2>
+
+          <div className="bg-white p-6 rounded-2xl shadow-md text-center">
+
+            <div className="w-20 h-20 bg-yellow-400 rounded-full mx-auto mb-4"></div>
+
+            <h3 className="text-lg font-semibold">Resume_IQ User</h3>
+            <p className="text-gray-600">Free Plan</p>
+
+          </div>
         </div>
       )}
 
       <Navbar setPage={setPage} currentPage={page} />
+
     </div>
   );
 }
