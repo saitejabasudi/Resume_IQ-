@@ -1,127 +1,155 @@
 import React, { useState } from "react";
 import axios from "axios";
-import "./App.css";
+import { FaFileUpload } from "react-icons/fa";
+import Navbar from "./components/Navbar";
+import CircularScore from "./components/CircularScore";
+import Loader from "./components/Loader";
+import InstallButton from "./components/InstallButton";
 
 function App() {
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
-  const [result, setResult] = useState(null);
+  const [score, setScore] = useState(null);
+  const [jobMatch, setJobMatch] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState("home");
 
-  // Handle File Upload
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-
-    if (!selectedFile) return;
-
-    // Allow only PDF & DOCX
-    if (
-      !selectedFile.name.toLowerCase().endsWith(".pdf") &&
-      !selectedFile.name.toLowerCase().endsWith(".docx")
-    ) {
-      alert("Only PDF and DOCX files are allowed.");
-      return;
-    }
-
-    setFile(selectedFile);
-  };
-
-  // Analyze Resume
-  const handleAnalyze = async () => {
+  const analyze = async () => {
     if (!file) {
-      alert("Please upload a resume first.");
+      alert("Upload resume first");
       return;
     }
+
+    const formData = new FormData();
+    formData.append("resume", file);
+    formData.append("jobDescription", jobDescription);
 
     try {
       setLoading(true);
-      setResult(null);
+      setScore(null);
+      setJobMatch(null);
 
-      const formData = new FormData();
-      formData.append("resume", file);
-      formData.append("jobDescription", jobDescription);
-
-      const response = await axios.post("/api/analyze", formData, {
+      const res = await axios.post("/api/analyze", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      setResult(response.data);
-    } catch (error) {
-      console.error("Analysis Error:", error);
-      alert("Resume analysis failed. Please upload a valid PDF or DOCX file.");
+      setScore(res.data.atsScore);
+
+      setJobMatch({
+        matchScore: res.data.matchScore,
+        matchedSkills: res.data.matchedSkills,
+        missingSkills: res.data.missingSkills,
+      });
+
+    } catch (err) {
+      console.error(err);
+      alert("Analysis failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      <h1 className="text-3xl font-bold mb-6">Resume_IQ</h1>
+    <div className="min-h-screen bg-gray-100 p-4 pb-24">
 
-      <div className="bg-white shadow-md rounded-xl p-6 w-full max-w-lg">
-        {/* Upload Section */}
-        <h2 className="text-lg font-semibold mb-2">Upload Resume</h2>
+      {/* ================= HOME PAGE ================= */}
+      {page === "home" && (
+        <>
+          <h1 className="text-2xl font-bold mb-6 text-center">
+            Resume_IQ
+          </h1>
 
-        <input
-          type="file"
-          accept=".pdf,.docx"
-          onChange={handleFileChange}
-          className="mb-4"
-        />
-
-        {/* Job Description */}
-        <textarea
-          placeholder="Paste Job Description (Optional)"
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          className="w-full border rounded-lg p-3 mb-4"
-          rows="5"
-        />
-
-        {/* Analyze Button */}
-        <button
-          onClick={handleAnalyze}
-          disabled={loading}
-          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 rounded-lg transition"
-        >
-          {loading ? "Analyzing..." : "Analyze Resume"}
-        </button>
-
-        {/* Results Section */}
-        {result && (
-          <div className="mt-6">
-            <h3 className="text-xl font-semibold mb-2">Analysis Result</h3>
-
-            <p className="mb-2">
-              <strong>ATS Score:</strong> {result.atsScore}%
-            </p>
-
-            <p className="mb-2">
-              <strong>Job Match Score:</strong> {result.matchScore}%
-            </p>
-
-            <div className="mb-2">
-              <strong>Matched Skills:</strong>
-              <ul className="list-disc list-inside">
-                {result.matchedSkills?.map((skill, index) => (
-                  <li key={index}>{skill}</li>
-                ))}
-              </ul>
+          <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="flex items-center gap-2 mb-4">
+              <FaFileUpload className="text-yellow-400" />
+              <span className="font-semibold">Upload Resume</span>
             </div>
 
-            <div>
-              <strong>Missing Skills:</strong>
-              <ul className="list-disc list-inside">
-                {result.missingSkills?.map((skill, index) => (
-                  <li key={index}>{skill}</li>
-                ))}
-              </ul>
-            </div>
+            <input
+              type="file"
+              accept=".pdf,.docx,.jpg,.jpeg,.png"
+              className="mb-4 w-full"
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+
+            <textarea
+              placeholder="Paste Job Description (Optional)"
+              className="w-full p-2 border rounded mb-4"
+              rows="4"
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+            />
+
+            <button
+              onClick={analyze}
+              className="bg-yellow-400 w-full py-2 rounded-lg font-semibold hover:bg-yellow-500 transition"
+            >
+              Start Analyzing
+            </button>
+
+            <InstallButton />
           </div>
-        )}
-      </div>
+
+          {loading && <Loader />}
+
+          {score !== null && !loading && (
+            <div className="bg-white p-6 rounded-xl shadow-md mt-6">
+              <h2 className="text-center font-semibold mb-4">
+                ATS Resume Score
+              </h2>
+
+              <CircularScore score={score} />
+
+              {jobMatch && (
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-2 text-center">
+                    Job Match: {jobMatch.matchScore}%
+                  </h3>
+
+                  <p className="text-green-600 mt-2">
+                    <strong>Matched Skills:</strong>{" "}
+                    {jobMatch.matchedSkills?.length > 0
+                      ? jobMatch.matchedSkills.join(", ")
+                      : "None"}
+                  </p>
+
+                  <p className="text-red-500 mt-2">
+                    <strong>Missing Skills:</strong>{" "}
+                    {jobMatch.missingSkills?.length > 0
+                      ? jobMatch.missingSkills.join(", ")
+                      : "None"}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ================= HISTORY PAGE ================= */}
+      {page === "history" && (
+        <div className="text-center mt-20 text-lg">
+          📄 Resume History (Coming Soon)
+        </div>
+      )}
+
+      {/* ================= TIPS PAGE ================= */}
+      {page === "tips" && (
+        <div className="text-center mt-20 text-lg">
+          ⭐ Resume Improvement Tips (Coming Soon)
+        </div>
+      )}
+
+      {/* ================= PROFILE PAGE ================= */}
+      {page === "profile" && (
+        <div className="text-center mt-20 text-lg">
+          👤 User Profile (Coming Soon)
+        </div>
+      )}
+
+      <Navbar setPage={setPage} currentPage={page} />
     </div>
   );
 }
