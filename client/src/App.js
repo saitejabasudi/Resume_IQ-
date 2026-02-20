@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaFileUpload } from "react-icons/fa";
+import { FaFileUpload, FaMoon, FaSun } from "react-icons/fa";
 import Navbar from "./components/Navbar";
 import CircularScore from "./components/CircularScore";
 import Loader from "./components/Loader";
@@ -13,8 +13,30 @@ function App() {
   const [jobMatch, setJobMatch] = useState(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
+  const [darkMode, setDarkMode] = useState(false);
 
-  // ================= ANALYZE FUNCTION =================
+  // ===== Load Dark Mode Preference =====
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      setDarkMode(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  // ===== Toggle Dark Mode =====
+  const toggleDarkMode = () => {
+    if (darkMode) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    }
+    setDarkMode(!darkMode);
+  };
+
+  // ===== Analyze =====
   const analyze = async () => {
     if (!file) {
       alert("Upload resume first");
@@ -44,31 +66,23 @@ function App() {
     }
   };
 
-  // ================= SMART TIPS =================
   const generateTips = () => {
     if (!score) return [];
 
     let tips = [];
 
     if (score < 40) {
-      tips.push("Add clear section headings like Experience, Education, Skills.");
-      tips.push("Increase resume length with detailed responsibilities.");
-      tips.push("Use numbers to show impact (e.g., Increased sales by 20%).");
-    }
-
-    if (score >= 40 && score < 70) {
-      tips.push("Improve keyword matching with job description.");
-      tips.push("Add measurable achievements.");
-    }
-
-    if (score >= 70) {
-      tips.push("Resume structure is strong.");
-      tips.push("Optimize formatting for better readability.");
+      tips.push("Add clear section headings.");
+      tips.push("Include measurable achievements.");
+    } else if (score < 70) {
+      tips.push("Improve keyword matching.");
+    } else {
+      tips.push("Strong resume structure.");
     }
 
     if (jobMatch?.missing?.length > 0) {
       tips.push(
-        `Consider adding these skills if relevant: ${jobMatch.missing.join(", ")}`
+        `Add these skills if relevant: ${jobMatch.missing.join(", ")}`
       );
     }
 
@@ -76,16 +90,24 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 pb-24">
+    <div className="min-h-screen p-4 pb-24 bg-gray-100 dark:bg-gray-900 dark:text-white transition-all duration-300">
 
-      {/* ================= HOME PAGE ================= */}
+      {/* ===== Header ===== */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Resume_IQ</h1>
+
+        <button
+          onClick={toggleDarkMode}
+          className="text-xl p-2 rounded-full bg-gray-200 dark:bg-gray-700"
+        >
+          {darkMode ? <FaSun /> : <FaMoon />}
+        </button>
+      </div>
+
+      {/* ================= HOME ================= */}
       {page === "home" && (
         <>
-          <h1 className="text-2xl font-bold mb-6 text-center">
-            Resume_IQ
-          </h1>
-
-          <div className="bg-white p-6 rounded-xl shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex items-center gap-2 mb-4">
               <FaFileUpload className="text-yellow-400" />
               <span className="font-semibold">Upload Resume</span>
@@ -100,7 +122,7 @@ function App() {
 
             <textarea
               placeholder="Paste Job Description (Optional)"
-              className="w-full p-2 border rounded mb-4"
+              className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -119,7 +141,7 @@ function App() {
           {loading && <Loader />}
 
           {score !== null && !loading && (
-            <div className="bg-white p-6 rounded-xl shadow-md mt-6">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-6">
               <h2 className="text-center font-semibold mb-4">
                 ATS Resume Score
               </h2>
@@ -132,14 +154,14 @@ function App() {
                     Job Match: {jobMatch.matchScore}%
                   </h3>
 
-                  <p className="text-green-600 mt-2">
+                  <p className="text-green-500 mt-2">
                     <strong>Matched Skills:</strong>{" "}
                     {jobMatch.matched?.length > 0
                       ? jobMatch.matched.join(", ")
                       : "None"}
                   </p>
 
-                  <p className="text-red-500 mt-2">
+                  <p className="text-red-400 mt-2">
                     <strong>Missing Skills:</strong>{" "}
                     {jobMatch.missing?.length > 0
                       ? jobMatch.missing.join(", ")
@@ -152,14 +174,7 @@ function App() {
         </>
       )}
 
-      {/* ================= HISTORY PAGE ================= */}
-      {page === "history" && (
-        <div className="text-center mt-20 text-lg">
-          📄 Resume History (Coming Soon)
-        </div>
-      )}
-
-      {/* ================= TIPS PAGE ================= */}
+      {/* ================= TIPS ================= */}
       {page === "tips" && (
         <div>
           <h2 className="text-xl font-bold text-center mb-6">
@@ -167,28 +182,19 @@ function App() {
           </h2>
 
           {score === null ? (
-            <p className="text-center text-gray-500">
-              Analyze your resume first to see tips.
+            <p className="text-center text-gray-400">
+              Analyze resume first.
             </p>
           ) : (
-            <div className="space-y-4">
-              {generateTips().map((tip, index) => (
-                <div
-                  key={index}
-                  className="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-400"
-                >
-                  {tip}
-                </div>
-              ))}
-            </div>
+            generateTips().map((tip, index) => (
+              <div
+                key={index}
+                className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4"
+              >
+                {tip}
+              </div>
+            ))
           )}
-        </div>
-      )}
-
-      {/* ================= PROFILE PAGE ================= */}
-      {page === "profile" && (
-        <div className="text-center mt-20 text-lg">
-          👤 User Profile (Coming Soon)
         </div>
       )}
 
