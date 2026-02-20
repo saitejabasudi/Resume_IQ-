@@ -15,6 +15,12 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
 
+  // ✅ HISTORY STATE (Auto Load from localStorage)
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem("resumeHistory");
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const analyze = async () => {
     if (!file) {
       alert("Upload resume first");
@@ -35,7 +41,19 @@ function App() {
       setScore(res.data.atsScore);
       setJobMatch(res.data.jobMatch);
 
+      // ✅ SAVE TO HISTORY
+      const newEntry = {
+        date: new Date().toLocaleString(),
+        score: res.data.atsScore,
+        match: res.data.jobMatch?.matchScore || 0
+      };
+
+      const updatedHistory = [newEntry, ...history];
+      setHistory(updatedHistory);
+      localStorage.setItem("resumeHistory", JSON.stringify(updatedHistory));
+
       setPage("result");
+
     } catch (err) {
       alert("Analysis failed");
     } finally {
@@ -58,17 +76,14 @@ function App() {
             transition={{ duration: 0.3 }}
             className="p-6"
           >
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold">
-                Resume <span className="text-yellow-400">IQ</span>
-              </h1>
-              <p className="text-gray-500 mt-2">
-                AI Powered Resume Optimization
-              </p>
-            </div>
+            <h1 className="text-3xl font-bold mb-2">
+              Resume <span className="text-yellow-400">IQ</span>
+            </h1>
+            <p className="text-gray-500 mb-6">
+              AI Powered Resume Optimization
+            </p>
 
             <div className="bg-white p-6 rounded-3xl shadow-lg">
-
               <div className="flex items-center gap-2 mb-4">
                 <FaFileUpload className="text-yellow-400" />
                 <span className="font-semibold">Upload Resume</span>
@@ -83,7 +98,7 @@ function App() {
 
               <textarea
                 placeholder="Paste Job Description (Optional)"
-                className="w-full p-3 border rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                className="w-full p-3 border rounded-xl mb-4"
                 rows="4"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
@@ -91,7 +106,7 @@ function App() {
 
               <button
                 onClick={analyze}
-                className="bg-yellow-400 w-full py-3 rounded-xl font-semibold shadow-md hover:bg-yellow-500 transition"
+                className="bg-yellow-400 w-full py-3 rounded-xl font-semibold hover:bg-yellow-500 transition"
               >
                 Start AI Analysis
               </button>
@@ -99,7 +114,6 @@ function App() {
               <div className="mt-4">
                 <InstallButton />
               </div>
-
             </div>
 
             {loading && <Loader />}
@@ -118,55 +132,81 @@ function App() {
           >
             <h2 className="text-2xl font-bold mb-6">Analysis Result</h2>
 
-            {score !== null ? (
-              <div className="bg-white rounded-3xl shadow-lg p-6 text-center">
+            <div className="bg-white p-6 rounded-3xl shadow-lg text-center">
 
-                <div className="bg-green-100 text-green-600 py-2 rounded-xl text-sm mb-6">
-                  ✔ Scanning Completed Successfully
-                </div>
+              <CircularScore score={score} />
 
-                <CircularScore score={score} />
+              <h3 className="mt-6 text-xl font-semibold">
+                Resume Score: {score}/100
+              </h3>
 
-                <h3 className="mt-6 text-2xl font-bold">
-                  {score}/100 Resume Score
-                </h3>
+              {jobMatch && (
+                <div className="mt-6 text-left space-y-4">
 
-                {jobMatch && (
-                  <div className="mt-6 text-left space-y-4">
-
-                    <div className="bg-green-50 p-4 rounded-xl">
-                      <p className="text-green-700 font-semibold">
-                        Matched Skills
-                      </p>
-                      <p className="text-sm mt-1">
-                        {jobMatch.matched?.join(", ") || "None"}
-                      </p>
-                    </div>
-
-                    <div className="bg-red-50 p-4 rounded-xl">
-                      <p className="text-red-600 font-semibold">
-                        Missing Skills
-                      </p>
-                      <p className="text-sm mt-1">
-                        {jobMatch.missing?.join(", ") || "None"}
-                      </p>
-                    </div>
-
+                  <div className="bg-green-50 p-4 rounded-xl">
+                    <p className="text-green-700 font-semibold">
+                      Matched Skills
+                    </p>
+                    <p className="text-sm mt-1">
+                      {jobMatch.matched?.join(", ") || "None"}
+                    </p>
                   </div>
-                )}
 
-                <button
-                  onClick={() => setPage("home")}
-                  className="bg-yellow-400 mt-8 w-full py-3 rounded-xl font-semibold shadow-md"
-                >
-                  Analyze Another Resume
-                </button>
+                  <div className="bg-red-50 p-4 rounded-xl">
+                    <p className="text-red-600 font-semibold">
+                      Missing Skills
+                    </p>
+                    <p className="text-sm mt-1">
+                      {jobMatch.missing?.join(", ") || "None"}
+                    </p>
+                  </div>
 
-              </div>
-            ) : (
-              <p className="text-center mt-20 text-gray-500">
-                No analysis yet.
+                </div>
+              )}
+
+              <button
+                onClick={() => setPage("home")}
+                className="bg-yellow-400 mt-8 w-full py-3 rounded-xl font-semibold"
+              >
+                Analyze Another Resume
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= HISTORY PAGE ================= */}
+        {page === "history" && (
+          <motion.div
+            key="history"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.3 }}
+            className="p-6"
+          >
+            <h2 className="text-2xl font-bold mb-6">Resume History</h2>
+
+            {history.length === 0 ? (
+              <p className="text-gray-500 text-center">
+                No past analysis yet.
               </p>
+            ) : (
+              <div className="space-y-4">
+                {history.map((item, index) => (
+                  <div
+                    key={index}
+                    className="bg-white p-4 rounded-2xl shadow-md"
+                  >
+                    <p className="text-sm text-gray-500">{item.date}</p>
+                    <p className="font-semibold mt-1">
+                      Resume Score: {item.score}/100
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Job Match: {item.match}%
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </motion.div>
         )}
