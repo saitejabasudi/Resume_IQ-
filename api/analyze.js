@@ -1,5 +1,7 @@
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
+import formidable from "formidable";
+import fs from "fs";
 
 export const config = {
   api: {
@@ -78,34 +80,46 @@ export default async function handler(req, res) {
   }
 
   try {
-    const buffers = [];
-    for await (const chunk of req) {
-      buffers.push(chunk);
-    }
+    const form = formidable({ multiples: false });
 
-    const dataBuffer = Buffer.concat(buffers);
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        return res.status(500).json({ error: "Form parsing failed" });
+      }
 
-    let text = "";
+      const file = files.resume;
+      const jobDescription = fields.jobDescription || "";
 
-    if (req.headers["content-type"]?.includes("pdf")) {
-      const data = await pdfParse(dataBuffer);
-      text = data.text;
-    } else {
-      const result = await mammoth.extractRawText({
-        buffer: dataBuffer,
+      if (!file) {
+        return res.status(400).json({ error: "No resume uploaded" });
+      }
+
+      const fileBuffer = fs.readFileSync(file.filepath);
+
+      let text = "";
+
+      if (file.mimetype === "application/pdf") {
+        const data = await pdfParse(fileBuffer);
+        text = data.text;
+      } else {
+        const result = await mammoth.extractRawText({
+          buffer: fileBuffer,
+        });
+        text = result.value;
+      }
+
+      const atsResult = analyzeResume(text);
+      const jobMatchResult = matchJobDescription(text, jobDescription);
+
+      res.status(200).json({
+        success: true,
+        atsScore: atsResult.score,
+        foundSkills: atsResult.foundSkills,
+        jobMatch: jobMatchResult
       });
-      text = result.value;
-    }
-
-    const atsResult = analyzeResume(text);
-
-    res.status(200).json({
-      success: true,
-      atsScore: atsResult.score,
-      foundSkills: atsResult.foundSkills
     });
 
   } catch (error) {
     res.status(500).json({ error: "Analysis failed" });
   }
-}
+      }
