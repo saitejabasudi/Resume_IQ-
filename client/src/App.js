@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import { FaFileUpload } from "react-icons/fa";
 import Navbar from "./components/Navbar";
@@ -13,16 +13,8 @@ function App() {
   const [jobMatch, setJobMatch] = useState(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
-  const [history, setHistory] = useState([]);
 
-  // Load history from localStorage
-  useEffect(() => {
-    const savedHistory = localStorage.getItem("resumeHistory");
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
-  }, []);
-
+  // ================= ANALYZE FUNCTION =================
   const analyze = async () => {
     if (!file) {
       alert("Upload resume first");
@@ -38,31 +30,12 @@ function App() {
       setScore(null);
       setJobMatch(null);
 
-      const res = await axios.post("/api/analyze", formData);
-
-      const resultData = {
-        date: new Date().toLocaleString(),
-        atsScore: res.data.atsScore,
-        matchScore: res.data.matchScore,
-        matchedSkills: res.data.matchedSkills,
-        missingSkills: res.data.missingSkills,
-      };
-
-      setScore(res.data.atsScore);
-      setJobMatch({
-        matchScore: res.data.matchScore,
-        matchedSkills: res.data.matchedSkills,
-        missingSkills: res.data.missingSkills,
+      const res = await axios.post("/api/analyze", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Save to history
-      const updatedHistory = [resultData, ...history];
-      setHistory(updatedHistory);
-      localStorage.setItem(
-        "resumeHistory",
-        JSON.stringify(updatedHistory)
-      );
-
+      setScore(res.data.atsScore);
+      setJobMatch(res.data.jobMatch);
     } catch (err) {
       console.error(err);
       alert("Analysis failed");
@@ -71,10 +44,41 @@ function App() {
     }
   };
 
+  // ================= SMART TIPS =================
+  const generateTips = () => {
+    if (!score) return [];
+
+    let tips = [];
+
+    if (score < 40) {
+      tips.push("Add clear section headings like Experience, Education, Skills.");
+      tips.push("Increase resume length with detailed responsibilities.");
+      tips.push("Use numbers to show impact (e.g., Increased sales by 20%).");
+    }
+
+    if (score >= 40 && score < 70) {
+      tips.push("Improve keyword matching with job description.");
+      tips.push("Add measurable achievements.");
+    }
+
+    if (score >= 70) {
+      tips.push("Resume structure is strong.");
+      tips.push("Optimize formatting for better readability.");
+    }
+
+    if (jobMatch?.missing?.length > 0) {
+      tips.push(
+        `Consider adding these skills if relevant: ${jobMatch.missing.join(", ")}`
+      );
+    }
+
+    return tips;
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 pb-24">
 
-      {/* ================= HOME ================= */}
+      {/* ================= HOME PAGE ================= */}
       {page === "home" && (
         <>
           <h1 className="text-2xl font-bold mb-6 text-center">
@@ -89,7 +93,7 @@ function App() {
 
             <input
               type="file"
-              accept=".pdf,.docx"
+              accept=".pdf,.docx,.jpg,.jpeg,.png"
               className="mb-4 w-full"
               onChange={(e) => setFile(e.target.files[0])}
             />
@@ -124,21 +128,21 @@ function App() {
 
               {jobMatch && (
                 <div className="mt-6">
-                  <h3 className="font-semibold text-center mb-2">
+                  <h3 className="font-semibold mb-2 text-center">
                     Job Match: {jobMatch.matchScore}%
                   </h3>
 
                   <p className="text-green-600 mt-2">
                     <strong>Matched Skills:</strong>{" "}
-                    {jobMatch.matchedSkills?.length > 0
-                      ? jobMatch.matchedSkills.join(", ")
+                    {jobMatch.matched?.length > 0
+                      ? jobMatch.matched.join(", ")
                       : "None"}
                   </p>
 
                   <p className="text-red-500 mt-2">
                     <strong>Missing Skills:</strong>{" "}
-                    {jobMatch.missingSkills?.length > 0
-                      ? jobMatch.missingSkills.join(", ")
+                    {jobMatch.missing?.length > 0
+                      ? jobMatch.missing.join(", ")
                       : "None"}
                   </p>
                 </div>
@@ -148,54 +152,43 @@ function App() {
         </>
       )}
 
-      {/* ================= HISTORY ================= */}
+      {/* ================= HISTORY PAGE ================= */}
       {page === "history" && (
+        <div className="text-center mt-20 text-lg">
+          📄 Resume History (Coming Soon)
+        </div>
+      )}
+
+      {/* ================= TIPS PAGE ================= */}
+      {page === "tips" && (
         <div>
           <h2 className="text-xl font-bold text-center mb-6">
-            Resume Analysis History
+            Smart Resume Tips
           </h2>
 
-          {history.length === 0 ? (
+          {score === null ? (
             <p className="text-center text-gray-500">
-              No history yet.
+              Analyze your resume first to see tips.
             </p>
           ) : (
-            history.map((item, index) => (
-              <div
-                key={index}
-                className="bg-white p-4 rounded-lg shadow mb-4"
-              >
-                <p className="text-sm text-gray-500 mb-2">
-                  {item.date}
-                </p>
-
-                <p><strong>ATS Score:</strong> {item.atsScore}</p>
-                <p><strong>Job Match:</strong> {item.matchScore}%</p>
-
-                <p className="text-green-600 text-sm mt-2">
-                  Matched: {item.matchedSkills.join(", ") || "None"}
-                </p>
-
-                <p className="text-red-500 text-sm">
-                  Missing: {item.missingSkills.join(", ") || "None"}
-                </p>
-              </div>
-            ))
+            <div className="space-y-4">
+              {generateTips().map((tip, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-400"
+                >
+                  {tip}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
 
-      {/* ================= TIPS ================= */}
-      {page === "tips" && (
-        <div className="text-center mt-20 text-lg">
-          ⭐ Resume Improvement Tips (Next Step)
-        </div>
-      )}
-
-      {/* ================= PROFILE ================= */}
+      {/* ================= PROFILE PAGE ================= */}
       {page === "profile" && (
         <div className="text-center mt-20 text-lg">
-          👤 User Profile (Next Step)
+          👤 User Profile (Coming Soon)
         </div>
       )}
 
