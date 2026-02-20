@@ -12,14 +12,9 @@ function App() {
   const [jobDescription, setJobDescription] = useState("");
   const [score, setScore] = useState(null);
   const [jobMatch, setJobMatch] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
-
-  // ✅ Load History from localStorage
-  const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem("resumeHistory");
-    return saved ? JSON.parse(saved) : [];
-  });
 
   const analyze = async () => {
     if (!file) {
@@ -35,26 +30,51 @@ function App() {
       setLoading(true);
       setScore(null);
       setJobMatch(null);
+      setSuggestions([]);
 
-      const res = await axios.post("/api/analyze", formData);
+      const res = await axios.post("/api/analyze", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       setScore(res.data.atsScore);
-      setJobMatch(res.data.jobMatch);
 
-      // ✅ Save to History
-      const newEntry = {
-        date: new Date().toLocaleString(),
-        score: res.data.atsScore,
-        match: res.data.jobMatch?.matchScore || 0
-      };
+      setJobMatch({
+        matchScore: res.data.matchScore,
+        matchedSkills: res.data.matchedSkills,
+        missingSkills: res.data.missingSkills,
+      });
 
-      const updatedHistory = [newEntry, ...history];
-      setHistory(updatedHistory);
-      localStorage.setItem("resumeHistory", JSON.stringify(updatedHistory));
+      // ✅ Smart Suggestions Logic
+      const generatedSuggestions = [];
 
-      setPage("result");
+      if (res.data.atsScore < 60) {
+        generatedSuggestions.push(
+          "Improve resume formatting and use clear section headings."
+        );
+      }
+
+      if (res.data.missingSkills?.length > 0) {
+        generatedSuggestions.push(
+          `Add missing skills such as: ${res.data.missingSkills.join(", ")}`
+        );
+      }
+
+      if (!jobDescription) {
+        generatedSuggestions.push(
+          "Paste a job description to get a more accurate job match score."
+        );
+      }
+
+      if (res.data.atsScore >= 75) {
+        generatedSuggestions.push(
+          "Great resume! Consider tailoring it more specifically to each job role."
+        );
+      }
+
+      setSuggestions(generatedSuggestions);
 
     } catch (err) {
+      console.error(err);
       alert("Analysis failed");
     } finally {
       setLoading(false);
@@ -62,11 +82,11 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-28">
+    <div className="min-h-screen bg-gray-100 p-4 pb-24">
 
       <AnimatePresence mode="wait">
 
-        {/* ================= HOME ================= */}
+        {/* ================= HOME PAGE ================= */}
         {page === "home" && (
           <motion.div
             key="home"
@@ -74,16 +94,12 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.3 }}
-            className="p-6"
           >
-            <h1 className="text-3xl font-bold mb-2">
-              Resume <span className="text-yellow-400">IQ</span>
+            <h1 className="text-2xl font-bold mb-6 text-center">
+              Resume_IQ
             </h1>
-            <p className="text-gray-500 mb-6">
-              AI Powered Resume Optimization
-            </p>
 
-            <div className="bg-white p-6 rounded-3xl shadow-lg">
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
               <div className="flex items-center gap-2 mb-4">
                 <FaFileUpload className="text-yellow-400" />
                 <span className="font-semibold">Upload Resume</span>
@@ -98,7 +114,7 @@ function App() {
 
               <textarea
                 placeholder="Paste Job Description (Optional)"
-                className="w-full p-3 border rounded-xl mb-4"
+                className="w-full p-3 border rounded-lg mb-4"
                 rows="4"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
@@ -106,92 +122,66 @@ function App() {
 
               <button
                 onClick={analyze}
-                className="bg-yellow-400 w-full py-3 rounded-xl font-semibold hover:bg-yellow-500 transition"
+                className="bg-yellow-400 w-full py-2 rounded-lg font-semibold hover:bg-yellow-500 transition"
               >
-                Start AI Analysis
+                Start Analyzing
               </button>
 
-              <div className="mt-4">
-                <InstallButton />
-              </div>
+              <InstallButton />
             </div>
 
             {loading && <Loader />}
-          </motion.div>
-        )}
 
-        {/* ================= RESULT ================= */}
-        {page === "result" && (
-          <motion.div
-            key="result"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.3 }}
-            className="p-6"
-          >
-            <h2 className="text-2xl font-bold mb-6">Analysis Result</h2>
+            {/* ================= RESULT SECTION ================= */}
+            {score !== null && !loading && (
+              <div className="bg-white p-6 rounded-2xl shadow-lg mt-6">
+                <h2 className="text-center font-semibold mb-4">
+                  ATS Resume Score
+                </h2>
 
-            <div className="bg-white p-6 rounded-3xl shadow-lg text-center">
-
-              {/* Auto Color Score */}
-              <div
-                className={`p-4 rounded-full inline-block ${
-                  score >= 75
-                    ? "bg-green-100"
-                    : score >= 50
-                    ? "bg-yellow-100"
-                    : "bg-red-100"
-                }`}
-              >
                 <CircularScore score={score} />
-              </div>
 
-              <h3 className="mt-6 text-xl font-semibold">
-                ATS Score: {score}/100
-              </h3>
-
-              {jobMatch && (
-                <>
-                  <div className="mt-4 bg-yellow-50 p-4 rounded-xl">
-                    <p className="text-lg font-bold">
+                {jobMatch && (
+                  <div className="mt-6">
+                    <h3 className="font-semibold mb-3 text-center">
                       Job Match: {jobMatch.matchScore}%
+                    </h3>
+
+                    <p className="text-green-600 mt-2">
+                      <strong>Matched Skills:</strong>{" "}
+                      {jobMatch.matchedSkills?.length > 0
+                        ? jobMatch.matchedSkills.join(", ")
+                        : "None"}
+                    </p>
+
+                    <p className="text-red-500 mt-2">
+                      <strong>Missing Skills:</strong>{" "}
+                      {jobMatch.missingSkills?.length > 0
+                        ? jobMatch.missingSkills.join(", ")
+                        : "None"}
                     </p>
                   </div>
+                )}
 
-                  <div className="mt-6 text-left space-y-4">
-                    <div className="bg-green-50 p-4 rounded-xl">
-                      <p className="text-green-700 font-semibold">
-                        Matched Skills
-                      </p>
-                      <p className="text-sm mt-1">
-                        {jobMatch.matched?.join(", ") || "None"}
-                      </p>
-                    </div>
-
-                    <div className="bg-red-50 p-4 rounded-xl">
-                      <p className="text-red-600 font-semibold">
-                        Missing Skills
-                      </p>
-                      <p className="text-sm mt-1">
-                        {jobMatch.missing?.join(", ") || "None"}
-                      </p>
-                    </div>
+                {/* ✅ AI Suggestions */}
+                {suggestions.length > 0 && (
+                  <div className="mt-6 bg-blue-50 p-5 rounded-2xl">
+                    <h3 className="font-semibold text-blue-700 mb-3">
+                      AI Improvement Suggestions
+                    </h3>
+                    <ul className="list-disc pl-5 text-sm space-y-2">
+                      {suggestions.map((tip, index) => (
+                        <li key={index}>{tip}</li>
+                      ))}
+                    </ul>
                   </div>
-                </>
-              )}
-
-              <button
-                onClick={() => setPage("home")}
-                className="bg-yellow-400 mt-8 w-full py-3 rounded-xl font-semibold"
-              >
-                Analyze Another Resume
-              </button>
-            </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 
-        {/* ================= HISTORY ================= */}
+        {/* ================= HISTORY PAGE ================= */}
         {page === "history" && (
           <motion.div
             key="history"
@@ -199,46 +189,13 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.3 }}
-            className="p-6"
+            className="text-center mt-20 text-lg"
           >
-            <h2 className="text-2xl font-bold mb-4">Resume History</h2>
-
-            <button
-              onClick={() => {
-                setHistory([]);
-                localStorage.removeItem("resumeHistory");
-              }}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg mb-4"
-            >
-              Clear History
-            </button>
-
-            {history.length === 0 ? (
-              <p className="text-gray-500 text-center">
-                No past analysis yet.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {history.map((item, index) => (
-                  <div
-                    key={index}
-                    className="bg-white p-4 rounded-2xl shadow-md"
-                  >
-                    <p className="text-sm text-gray-500">{item.date}</p>
-                    <p className="font-semibold mt-1">
-                      Resume Score: {item.score}/100
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Job Match: {item.match}%
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
+            📄 Resume History (Coming Soon)
           </motion.div>
         )}
 
-        {/* ================= TIPS ================= */}
+        {/* ================= TIPS PAGE ================= */}
         {page === "tips" && (
           <motion.div
             key="tips"
@@ -246,29 +203,13 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.3 }}
-            className="p-6"
+            className="text-center mt-20 text-lg"
           >
-            <h2 className="text-2xl font-bold mb-6">Resume Tips</h2>
-
-            <div className="space-y-4">
-              <div className="bg-white p-5 rounded-2xl shadow-md">
-                <h3 className="font-semibold">Use Keywords</h3>
-                <p className="text-gray-600 text-sm mt-2">
-                  Match your resume with job description keywords.
-                </p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl shadow-md">
-                <h3 className="font-semibold">Add Achievements</h3>
-                <p className="text-gray-600 text-sm mt-2">
-                  Use numbers and measurable impact.
-                </p>
-              </div>
-            </div>
+            ⭐ Resume Improvement Tips (Coming Soon)
           </motion.div>
         )}
 
-        {/* ================= PROFILE ================= */}
+        {/* ================= PROFILE PAGE ================= */}
         {page === "profile" && (
           <motion.div
             key="profile"
@@ -276,13 +217,9 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.3 }}
-            className="p-6 text-center"
+            className="text-center mt-20 text-lg"
           >
-            <div className="bg-white p-6 rounded-3xl shadow-lg">
-              <div className="w-20 h-20 bg-yellow-400 rounded-full mx-auto mb-4"></div>
-              <h3 className="font-semibold text-lg">Resume_IQ User</h3>
-              <p className="text-gray-500 text-sm mt-1">Free Plan</p>
-            </div>
+            👤 User Profile (Coming Soon)
           </motion.div>
         )}
 
