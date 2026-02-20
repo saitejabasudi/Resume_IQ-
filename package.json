@@ -1,0 +1,10 @@
+{
+  "name": "resume-iq-serverless",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "formidable": "^3.5.0",
+    "mammoth": "^1.4.26",
+    "pdf-parse": "^1.1.1"
+  }
+}
