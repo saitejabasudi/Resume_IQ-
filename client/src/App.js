@@ -14,32 +14,41 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const analyze = async () => {
-    if (!file) return alert("Upload resume first");
+    if (!file) {
+      alert("Upload resume first");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("resume", file);
     formData.append("jobDescription", jobDescription);
 
-    setLoading(true);
-    setScore(null);
+    try {
+      setLoading(true);
+      setScore(null);
+      setJobMatch(null);
 
-  const res = await axios.post(
-  "/api/analyze",
-  formData
-);
+      const res = await axios.post("/api/analyze", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       setScore(res.data.atsScore);
       setJobMatch(res.data.jobMatch);
     } catch (err) {
+      console.error(err);
       alert("Analysis failed");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 pb-24">
-      <h1 className="text-2xl font-bold mb-6">Resume_IQ</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">
+        Resume_IQ
+      </h1>
 
       <div className="bg-white p-6 rounded-xl shadow-md">
         <div className="flex items-center gap-2 mb-4">
@@ -49,7 +58,8 @@ function App() {
 
         <input
           type="file"
-          className="mb-4"
+          accept=".pdf,.doc,.docx"
+          className="mb-4 w-full"
           onChange={(e) => setFile(e.target.files[0])}
         />
 
@@ -63,7 +73,7 @@ function App() {
 
         <button
           onClick={analyze}
-          className="bg-yellow-400 w-full py-2 rounded-lg font-semibold"
+          className="bg-yellow-400 w-full py-2 rounded-lg font-semibold hover:bg-yellow-500 transition"
         >
           Analyze Resume
         </button>
@@ -88,11 +98,17 @@ function App() {
               </h3>
 
               <p className="text-green-600">
-                Matched Skills: {jobMatch.matched.join(", ") || "None"}
+                Matched Skills:{" "}
+                {jobMatch.matched?.length > 0
+                  ? jobMatch.matched.join(", ")
+                  : "None"}
               </p>
 
               <p className="text-red-500 mt-2">
-                Missing Skills: {jobMatch.missing.join(", ") || "None"}
+                Missing Skills:{" "}
+                {jobMatch.missing?.length > 0
+                  ? jobMatch.missing.join(", ")
+                  : "None"}
               </p>
             </div>
           )}
