@@ -7,6 +7,12 @@ import Loader from "./components/Loader";
 import InstallButton from "./components/InstallButton";
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login"); // login / register
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [score, setScore] = useState(null);
@@ -15,8 +21,13 @@ function App() {
   const [page, setPage] = useState("home");
   const [darkMode, setDarkMode] = useState(false);
 
-  // ===== Load Dark Mode Preference =====
+  // ================= Load Saved User =================
   useEffect(() => {
+    const savedUser = localStorage.getItem("resumeUser");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") {
       setDarkMode(true);
@@ -24,7 +35,7 @@ function App() {
     }
   }, []);
 
-  // ===== Toggle Dark Mode =====
+  // ================= Dark Mode =================
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove("dark");
@@ -36,7 +47,42 @@ function App() {
     setDarkMode(!darkMode);
   };
 
-  // ===== Analyze =====
+  // ================= Register =================
+  const register = () => {
+    if (!email || !password) {
+      alert("Enter email and password");
+      return;
+    }
+
+    const newUser = { email, password };
+    localStorage.setItem("resumeUser", JSON.stringify(newUser));
+    setUser(newUser);
+  };
+
+  // ================= Login =================
+  const login = () => {
+    const savedUser = JSON.parse(localStorage.getItem("resumeUser"));
+
+    if (!savedUser) {
+      alert("No user found. Please register.");
+      return;
+    }
+
+    if (email === savedUser.email && password === savedUser.password) {
+      setUser(savedUser);
+    } else {
+      alert("Invalid credentials");
+    }
+  };
+
+  // ================= Logout =================
+  const logout = () => {
+    setUser(null);
+    setEmail("");
+    setPassword("");
+  };
+
+  // ================= Analyze =================
   const analyze = async () => {
     if (!file) {
       alert("Upload resume first");
@@ -49,62 +95,84 @@ function App() {
 
     try {
       setLoading(true);
-      setScore(null);
-      setJobMatch(null);
-
-      const res = await axios.post("/api/analyze", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
+      const res = await axios.post("/api/analyze", formData);
       setScore(res.data.atsScore);
       setJobMatch(res.data.jobMatch);
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Analysis failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const generateTips = () => {
-    if (!score) return [];
+  // ================= LOGIN PAGE =================
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 dark:text-white p-4">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md w-full max-w-sm">
+          <h2 className="text-2xl font-bold mb-6 text-center">
+            {authMode === "login" ? "Login" : "Register"}
+          </h2>
 
-    let tips = [];
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full p-2 border rounded mb-4 dark:bg-gray-700"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-    if (score < 40) {
-      tips.push("Add clear section headings.");
-      tips.push("Include measurable achievements.");
-    } else if (score < 70) {
-      tips.push("Improve keyword matching.");
-    } else {
-      tips.push("Strong resume structure.");
-    }
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full p-2 border rounded mb-4 dark:bg-gray-700"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-    if (jobMatch?.missing?.length > 0) {
-      tips.push(
-        `Add these skills if relevant: ${jobMatch.missing.join(", ")}`
-      );
-    }
+          <button
+            onClick={authMode === "login" ? login : register}
+            className="bg-yellow-400 w-full py-2 rounded-lg font-semibold"
+          >
+            {authMode === "login" ? "Login" : "Register"}
+          </button>
 
-    return tips;
-  };
+          <p
+            className="text-center mt-4 text-sm cursor-pointer text-blue-500"
+            onClick={() =>
+              setAuthMode(authMode === "login" ? "register" : "login")
+            }
+          >
+            {authMode === "login"
+              ? "Create an account"
+              : "Already have an account? Login"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
+  // ================= MAIN APP =================
   return (
-    <div className="min-h-screen p-4 pb-24 bg-gray-100 dark:bg-gray-900 dark:text-white transition-all duration-300">
+    <div className="min-h-screen p-4 pb-24 bg-gray-100 dark:bg-gray-900 dark:text-white">
 
-      {/* ===== Header ===== */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Resume_IQ</h1>
 
-        <button
-          onClick={toggleDarkMode}
-          className="text-xl p-2 rounded-full bg-gray-200 dark:bg-gray-700"
-        >
-          {darkMode ? <FaSun /> : <FaMoon />}
-        </button>
+        <div className="flex gap-3 items-center">
+          <button onClick={toggleDarkMode}>
+            {darkMode ? <FaSun /> : <FaMoon />}
+          </button>
+
+          <button
+            onClick={logout}
+            className="bg-red-500 px-3 py-1 rounded text-white text-sm"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* ================= HOME ================= */}
       {page === "home" && (
         <>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
@@ -115,14 +183,14 @@ function App() {
 
             <input
               type="file"
-              accept=".pdf,.docx,.jpg,.jpeg,.png"
+              accept=".pdf,.docx"
               className="mb-4 w-full"
               onChange={(e) => setFile(e.target.files[0])}
             />
 
             <textarea
-              placeholder="Paste Job Description (Optional)"
-              className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"
+              placeholder="Paste Job Description"
+              className="w-full p-2 border rounded mb-4 dark:bg-gray-700"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -130,7 +198,7 @@ function App() {
 
             <button
               onClick={analyze}
-              className="bg-yellow-400 w-full py-2 rounded-lg font-semibold hover:bg-yellow-500 transition"
+              className="bg-yellow-400 w-full py-2 rounded-lg font-semibold"
             >
               Start Analyzing
             </button>
@@ -140,62 +208,16 @@ function App() {
 
           {loading && <Loader />}
 
-          {score !== null && !loading && (
+          {score && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-6">
               <h2 className="text-center font-semibold mb-4">
                 ATS Resume Score
               </h2>
 
               <CircularScore score={score} />
-
-              {jobMatch && (
-                <div className="mt-6">
-                  <h3 className="font-semibold mb-2 text-center">
-                    Job Match: {jobMatch.matchScore}%
-                  </h3>
-
-                  <p className="text-green-500 mt-2">
-                    <strong>Matched Skills:</strong>{" "}
-                    {jobMatch.matched?.length > 0
-                      ? jobMatch.matched.join(", ")
-                      : "None"}
-                  </p>
-
-                  <p className="text-red-400 mt-2">
-                    <strong>Missing Skills:</strong>{" "}
-                    {jobMatch.missing?.length > 0
-                      ? jobMatch.missing.join(", ")
-                      : "None"}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </>
-      )}
-
-      {/* ================= TIPS ================= */}
-      {page === "tips" && (
-        <div>
-          <h2 className="text-xl font-bold text-center mb-6">
-            Smart Resume Tips
-          </h2>
-
-          {score === null ? (
-            <p className="text-center text-gray-400">
-              Analyze resume first.
-            </p>
-          ) : (
-            generateTips().map((tip, index) => (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4"
-              >
-                {tip}
-              </div>
-            ))
-          )}
-        </div>
       )}
 
       <Navbar setPage={setPage} currentPage={page} />
