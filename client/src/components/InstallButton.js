@@ -5,27 +5,41 @@ function InstallButton() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const handler = (e) => {
+    const beforeInstallHandler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setVisible(true);
     };
 
-    window.addEventListener("beforeinstallprompt", handler);
+    const appInstalledHandler = () => {
+      setVisible(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", beforeInstallHandler);
+    window.addEventListener("appinstalled", appInstalledHandler);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("beforeinstallprompt", beforeInstallHandler);
+      window.removeEventListener("appinstalled", appInstalledHandler);
     };
   }, []);
 
-  const installApp = () => {
+  const installApp = async () => {
     if (!deferredPrompt) return;
 
     deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => {
-      setDeferredPrompt(null);
-      setVisible(false);
-    });
+
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === "accepted") {
+      console.log("User accepted install");
+    } else {
+      console.log("User dismissed install");
+    }
+
+    setDeferredPrompt(null);
+    setVisible(false);
   };
 
   if (!visible) return null;
@@ -33,7 +47,7 @@ function InstallButton() {
   return (
     <button
       onClick={installApp}
-      className="bg-black text-white w-full py-2 rounded-lg mt-4"
+      className="bg-black text-white w-full py-2 rounded-lg mt-4 hover:bg-gray-800 transition"
     >
       Install Resume_IQ App
     </button>
