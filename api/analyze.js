@@ -1,6 +1,7 @@
+import formidable from "formidable";
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
-import formidable from "formidable";
+import Tesseract from "tesseract.js";
 import fs from "fs";
 
 export const config = {
@@ -9,117 +10,96 @@ export const config = {
   },
 };
 
-const skillKeywords = [
-  "javascript", "react", "node", "python", "java",
-  "sql", "mongodb", "html", "css", "express",
-  "leadership", "communication", "teamwork",
-  "problem solving", "data analysis",
-  "machine learning", "aws", "docker",
-  "git", "api", "frontend", "backend"
-];
-
-function analyzeResume(text) {
-  let score = 0;
-  const lowerText = text.toLowerCase();
-
-  const sections = ["experience", "education", "skills", "projects"];
-  sections.forEach(section => {
-    if (lowerText.includes(section)) score += 10;
-  });
-
-  let foundSkills = [];
-  skillKeywords.forEach(skill => {
-    if (lowerText.includes(skill)) {
-      foundSkills.push(skill);
-      score += 3;
-    }
-  });
-
-  if (text.length > 1000) score += 15;
-  if (text.match(/\d+/)) score += 10;
-  if (text.match(/@[a-zA-Z0-9.-]+/)) score += 5;
-
-  score = Math.min(score, 100);
-
-  return { score, foundSkills };
-}
-
-function matchJobDescription(resumeText, jobText) {
-  const resume = resumeText.toLowerCase();
-  const job = jobText.toLowerCase();
-
-  let matched = [];
-  let missing = [];
-
-  skillKeywords.forEach(skill => {
-    if (job.includes(skill)) {
-      if (resume.includes(skill)) {
-        matched.push(skill);
-      } else {
-        missing.push(skill);
-      }
-    }
-  });
-
-  let matchScore = 0;
-  if (matched.length + missing.length > 0) {
-    matchScore =
-      (matched.length / (matched.length + missing.length)) * 100;
-  }
-
-  return {
-    matchScore: Math.round(matchScore),
-    matched,
-    missing
-  };
-}
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method Not Allowed" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const form = formidable({ multiples: false });
+  const form = formidable({ multiples: false });
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        return res.status(500).json({ error: "Form parsing failed" });
-      }
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error("Form error:", err);
+      return res.status(500).json({ error: "File parsing failed" });
+    }
 
+    try {
       const file = files.resume;
       const jobDescription = fields.jobDescription || "";
 
       if (!file) {
-        return res.status(400).json({ error: "No resume uploaded" });
+        return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const fileBuffer = fs.readFileSync(file.filepath);
+      let resumeText = "";
+      const fileName = file.originalFilename.toLowerCase();
 
-      let text = "";
+      // ===== PDF =====
+      if (fileName.endsWith(".pdf")) {
+        const dataBuffer = fs.readFileSync(file.filepath);
+        const data = await pdfParse(dataBuffer);
+        resumeText = data.text;
+      }
 
-      if (file.mimetype === "application/pdf") {
-        const data = await pdfParse(fileBuffer);
-        text = data.text;
-      } else {
+      // ===== DOCX =====
+      else if (fileName.endsWith(".docx")) {
         const result = await mammoth.extractRawText({
-          buffer: fileBuffer,
+          path: file.filepath,
         });
-        text = result.value;
+        resumeText = result.value;
       }
 
-      const atsResult = analyzeResume(text);
-      const jobMatchResult = matchJobDescription(text, jobDescription);
+      // ===== IMAGE (JPG / PNG) =====
+      else if (
+        fileName.endsWith(".jpg") ||
+        fileName.endsWith(".jpeg") ||
+        fileName.endsWith(".png")
+      ) {
+        const {
+          data: { text },
+        } = await Tesseract.recognize(file.filepath, "eng");
+
+        resumeText = text;
+      }
+
+      else {
+        return res.status(400).json({ error: "Unsupported file type" });
+      }
+
+      if (!resumeText || resumeText.length < 20) {
+        return res.status(400).json({ error: "Could not extract text from file" });
+      }
+
+      // ===== Skill Matching Logic =====
+      const resumeWords = resumeText.toLowerCase().split(/\W+/);
+      const jobWords = jobDescription.toLowerCase().split(/\W+/);
+
+      const matchedSkills = jobWords.filter(word =>
+        resumeWords.includes(word)
+      );
+
+      const uniqueMatched = [...new Set(matchedSkills)];
+
+      const matchScore = jobWords.length
+        ? Math.round((uniqueMatched.length / jobWords.length) * 100)
+        : 0;
+
+      const atsScore = Math.min(100, Math.round(resumeText.length / 50));
+
+      const missingSkills = jobWords.filter(
+        word => !resumeWords.includes(word)
+      );
 
       res.status(200).json({
-        success: true,
-        atsScore: atsResult.score,
-        foundSkills: atsResult.foundSkills,
-        jobMatch: jobMatchResult
+        atsScore,
+        matchScore,
+        matchedSkills: uniqueMatched.slice(0, 10),
+        missingSkills: [...new Set(missingSkills)].slice(0, 10),
       });
-    });
 
-  } catch (error) {
-    res.status(500).json({ error: "Analysis failed" });
-  } 
+    } catch (error) {
+      console.error("Analysis error:", error);
+      res.status(500).json({ error: "Analysis failed" });
+    }
+  });
 }
