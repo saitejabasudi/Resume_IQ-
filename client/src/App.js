@@ -1,121 +1,127 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { FaFileUpload } from "react-icons/fa";
-import Navbar from "./components/Navbar";
-import CircularScore from "./components/CircularScore";
-import Loader from "./components/Loader";
-import InstallButton from "./components/InstallButton";
+import "./App.css";
 
 function App() {
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
-  const [score, setScore] = useState(null);
-  const [jobMatch, setJobMatch] = useState(null);
+  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const analyze = async () => {
-    if (!file) {
-      alert("Upload resume first");
+  // Handle File Upload
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+
+    if (!selectedFile) return;
+
+    // Allow only PDF & DOCX
+    if (
+      !selectedFile.name.toLowerCase().endsWith(".pdf") &&
+      !selectedFile.name.toLowerCase().endsWith(".docx")
+    ) {
+      alert("Only PDF and DOCX files are allowed.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("resume", file);
-    formData.append("jobDescription", jobDescription);
+    setFile(selectedFile);
+  };
+
+  // Analyze Resume
+  const handleAnalyze = async () => {
+    if (!file) {
+      alert("Please upload a resume first.");
+      return;
+    }
 
     try {
       setLoading(true);
-      setScore(null);
-      setJobMatch(null);
+      setResult(null);
 
-      const res = await axios.post("/api/analyze", formData, {
+      const formData = new FormData();
+      formData.append("resume", file);
+      formData.append("jobDescription", jobDescription);
+
+      const response = await axios.post("/api/analyze", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      setScore(res.data.atsScore);
-      setJobMatch(res.data.jobMatch);
-    } catch (err) {
-      console.error(err);
-      alert("Analysis failed");
+      setResult(response.data);
+    } catch (error) {
+      console.error("Analysis Error:", error);
+      alert("Resume analysis failed. Please upload a valid PDF or DOCX file.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 pb-24">
-      <h1 className="text-2xl font-bold mb-6 text-center">
-        Resume_IQ
-      </h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+      <h1 className="text-3xl font-bold mb-6">Resume_IQ</h1>
 
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <div className="flex items-center gap-2 mb-4">
-          <FaFileUpload className="text-yellow-400" />
-          <span className="font-semibold">Upload Resume</span>
-        </div>
+      <div className="bg-white shadow-md rounded-xl p-6 w-full max-w-lg">
+        {/* Upload Section */}
+        <h2 className="text-lg font-semibold mb-2">Upload Resume</h2>
 
         <input
           type="file"
-          accept=".pdf,.doc,.docx"
-          className="mb-4 w-full"
-          onChange={(e) => setFile(e.target.files[0])}
+          accept=".pdf,.docx"
+          onChange={handleFileChange}
+          className="mb-4"
         />
 
+        {/* Job Description */}
         <textarea
           placeholder="Paste Job Description (Optional)"
-          className="w-full p-2 border rounded mb-4"
-          rows="4"
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
+          className="w-full border rounded-lg p-3 mb-4"
+          rows="5"
         />
 
+        {/* Analyze Button */}
         <button
-          onClick={analyze}
-          className="bg-yellow-400 w-full py-2 rounded-lg font-semibold hover:bg-yellow-500 transition"
+          onClick={handleAnalyze}
+          disabled={loading}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 rounded-lg transition"
         >
-          Analyze Resume
+          {loading ? "Analyzing..." : "Analyze Resume"}
         </button>
 
-        <InstallButton />
-      </div>
+        {/* Results Section */}
+        {result && (
+          <div className="mt-6">
+            <h3 className="text-xl font-semibold mb-2">Analysis Result</h3>
 
-      {loading && <Loader />}
+            <p className="mb-2">
+              <strong>ATS Score:</strong> {result.atsScore}%
+            </p>
 
-      {score !== null && !loading && (
-        <div className="bg-white p-6 rounded-xl shadow-md mt-6">
-          <h2 className="text-center font-semibold mb-4">
-            ATS Resume Score
-          </h2>
+            <p className="mb-2">
+              <strong>Job Match Score:</strong> {result.matchScore}%
+            </p>
 
-          <CircularScore score={score} />
-
-          {jobMatch && (
-            <div className="mt-6">
-              <h3 className="font-semibold mb-2">
-                Job Match: {jobMatch.matchScore}%
-              </h3>
-
-              <p className="text-green-600">
-                Matched Skills:{" "}
-                {jobMatch.matched?.length > 0
-                  ? jobMatch.matched.join(", ")
-                  : "None"}
-              </p>
-
-              <p className="text-red-500 mt-2">
-                Missing Skills:{" "}
-                {jobMatch.missing?.length > 0
-                  ? jobMatch.missing.join(", ")
-                  : "None"}
-              </p>
+            <div className="mb-2">
+              <strong>Matched Skills:</strong>
+              <ul className="list-disc list-inside">
+                {result.matchedSkills?.map((skill, index) => (
+                  <li key={index}>{skill}</li>
+                ))}
+              </ul>
             </div>
-          )}
-        </div>
-      )}
 
-      <Navbar />
+            <div>
+              <strong>Missing Skills:</strong>
+              <ul className="list-disc list-inside">
+                {result.missingSkills?.map((skill, index) => (
+                  <li key={index}>{skill}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
