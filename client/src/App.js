@@ -15,7 +15,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
 
-  // ✅ HISTORY STATE (Auto Load from localStorage)
+  // ✅ Load History from localStorage
   const [history, setHistory] = useState(() => {
     const saved = localStorage.getItem("resumeHistory");
     return saved ? JSON.parse(saved) : [];
@@ -41,7 +41,7 @@ function App() {
       setScore(res.data.atsScore);
       setJobMatch(res.data.jobMatch);
 
-      // ✅ SAVE TO HISTORY
+      // ✅ Save to History
       const newEntry = {
         date: new Date().toLocaleString(),
         score: res.data.atsScore,
@@ -66,7 +66,7 @@ function App() {
 
       <AnimatePresence mode="wait">
 
-        {/* ================= HOME PAGE ================= */}
+        {/* ================= HOME ================= */}
         {page === "home" && (
           <motion.div
             key="home"
@@ -120,7 +120,7 @@ function App() {
           </motion.div>
         )}
 
-        {/* ================= RESULT PAGE ================= */}
+        {/* ================= RESULT ================= */}
         {page === "result" && (
           <motion.div
             key="result"
@@ -134,34 +134,51 @@ function App() {
 
             <div className="bg-white p-6 rounded-3xl shadow-lg text-center">
 
-              <CircularScore score={score} />
+              {/* Auto Color Score */}
+              <div
+                className={`p-4 rounded-full inline-block ${
+                  score >= 75
+                    ? "bg-green-100"
+                    : score >= 50
+                    ? "bg-yellow-100"
+                    : "bg-red-100"
+                }`}
+              >
+                <CircularScore score={score} />
+              </div>
 
               <h3 className="mt-6 text-xl font-semibold">
-                Resume Score: {score}/100
+                ATS Score: {score}/100
               </h3>
 
               {jobMatch && (
-                <div className="mt-6 text-left space-y-4">
-
-                  <div className="bg-green-50 p-4 rounded-xl">
-                    <p className="text-green-700 font-semibold">
-                      Matched Skills
-                    </p>
-                    <p className="text-sm mt-1">
-                      {jobMatch.matched?.join(", ") || "None"}
+                <>
+                  <div className="mt-4 bg-yellow-50 p-4 rounded-xl">
+                    <p className="text-lg font-bold">
+                      Job Match: {jobMatch.matchScore}%
                     </p>
                   </div>
 
-                  <div className="bg-red-50 p-4 rounded-xl">
-                    <p className="text-red-600 font-semibold">
-                      Missing Skills
-                    </p>
-                    <p className="text-sm mt-1">
-                      {jobMatch.missing?.join(", ") || "None"}
-                    </p>
-                  </div>
+                  <div className="mt-6 text-left space-y-4">
+                    <div className="bg-green-50 p-4 rounded-xl">
+                      <p className="text-green-700 font-semibold">
+                        Matched Skills
+                      </p>
+                      <p className="text-sm mt-1">
+                        {jobMatch.matched?.join(", ") || "None"}
+                      </p>
+                    </div>
 
-                </div>
+                    <div className="bg-red-50 p-4 rounded-xl">
+                      <p className="text-red-600 font-semibold">
+                        Missing Skills
+                      </p>
+                      <p className="text-sm mt-1">
+                        {jobMatch.missing?.join(", ") || "None"}
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
 
               <button
@@ -174,7 +191,7 @@ function App() {
           </motion.div>
         )}
 
-        {/* ================= HISTORY PAGE ================= */}
+        {/* ================= HISTORY ================= */}
         {page === "history" && (
           <motion.div
             key="history"
@@ -184,7 +201,17 @@ function App() {
             transition={{ duration: 0.3 }}
             className="p-6"
           >
-            <h2 className="text-2xl font-bold mb-6">Resume History</h2>
+            <h2 className="text-2xl font-bold mb-4">Resume History</h2>
+
+            <button
+              onClick={() => {
+                setHistory([]);
+                localStorage.removeItem("resumeHistory");
+              }}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg mb-4"
+            >
+              Clear History
+            </button>
 
             {history.length === 0 ? (
               <p className="text-gray-500 text-center">
@@ -211,7 +238,7 @@ function App() {
           </motion.div>
         )}
 
-        {/* ================= TIPS PAGE ================= */}
+        {/* ================= TIPS ================= */}
         {page === "tips" && (
           <motion.div
             key="tips"
@@ -227,21 +254,21 @@ function App() {
               <div className="bg-white p-5 rounded-2xl shadow-md">
                 <h3 className="font-semibold">Use Keywords</h3>
                 <p className="text-gray-600 text-sm mt-2">
-                  Match resume content with job description keywords.
+                  Match your resume with job description keywords.
                 </p>
               </div>
 
               <div className="bg-white p-5 rounded-2xl shadow-md">
                 <h3 className="font-semibold">Add Achievements</h3>
                 <p className="text-gray-600 text-sm mt-2">
-                  Use measurable results instead of generic tasks.
+                  Use numbers and measurable impact.
                 </p>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ================= PROFILE PAGE ================= */}
+        {/* ================= PROFILE ================= */}
         {page === "profile" && (
           <motion.div
             key="profile"
