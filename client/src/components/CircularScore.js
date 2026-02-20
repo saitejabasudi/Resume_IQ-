@@ -10,13 +10,20 @@ function CircularScore({ score }) {
 
   useEffect(() => {
     let start = 0;
+
     const interval = setInterval(() => {
       start += 1;
+
       if (start >= score) {
+        start = score;
         clearInterval(interval);
       }
+
       setProgress(start);
     }, 15);
+
+    // Cleanup to prevent memory leaks
+    return () => clearInterval(interval);
   }, [score]);
 
   const strokeDashoffset =
@@ -31,6 +38,7 @@ function CircularScore({ score }) {
   return (
     <div className="flex justify-center items-center">
       <svg height={radius * 2} width={radius * 2}>
+        {/* Background circle */}
         <circle
           stroke="#e5e7eb"
           fill="transparent"
@@ -39,17 +47,24 @@ function CircularScore({ score }) {
           cx={radius}
           cy={radius}
         />
+
+        {/* Progress circle */}
         <circle
           stroke={getColor()}
           fill="transparent"
           strokeWidth={stroke}
-          strokeDasharray={circumference + " " + circumference}
-          style={{ strokeDashoffset, transition: "stroke-dashoffset 0.5s" }}
+          strokeDasharray={`${circumference} ${circumference}`}
+          style={{
+            strokeDashoffset,
+            transition: "stroke-dashoffset 0.5s ease",
+          }}
           strokeLinecap="round"
           r={normalizedRadius}
           cx={radius}
           cy={radius}
         />
+
+        {/* Score text */}
         <text
           x="50%"
           y="50%"
@@ -57,7 +72,7 @@ function CircularScore({ score }) {
           dy=".3em"
           className="text-2xl font-bold fill-gray-800"
         >
-          {progress}
+          {progress}%
         </text>
       </svg>
     </div>
