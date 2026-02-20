@@ -32,15 +32,9 @@ function App() {
       const res = await axios.post("/api/analyze", formData);
 
       setScore(res.data.atsScore);
-
-      setJobMatch({
-        matchScore: res.data.matchScore,
-        matchedSkills: res.data.matchedSkills,
-        missingSkills: res.data.missingSkills,
-      });
+      setJobMatch(res.data.jobMatch);
 
       setPage("history");
-
     } catch (err) {
       alert("Analysis failed");
     } finally {
@@ -53,12 +47,20 @@ function App() {
 
       {/* ================= HOME ================= */}
       {page === "home" && (
-        <div className="p-4">
-          <h1 className="text-3xl font-bold mb-6">
-            Ready To Level Up Your Resume?
-          </h1>
+        <div className="p-6">
 
-          <div className="bg-white p-6 rounded-2xl shadow-md">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">
+              Resume <span className="text-yellow-400">IQ</span>
+            </h1>
+            <p className="text-gray-500 mt-2">
+              AI Powered Resume Optimization
+            </p>
+          </div>
+
+          {/* Main Card */}
+          <div className="bg-white p-6 rounded-3xl shadow-lg">
 
             <div className="flex items-center gap-2 mb-4">
               <FaFileUpload className="text-yellow-400" />
@@ -74,7 +76,7 @@ function App() {
 
             <textarea
               placeholder="Paste Job Description (Optional)"
-              className="w-full p-3 border rounded-lg mb-4"
+              className="w-full p-3 border rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-yellow-300"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -82,9 +84,9 @@ function App() {
 
             <button
               onClick={analyze}
-              className="bg-yellow-400 w-full py-3 rounded-xl font-semibold hover:bg-yellow-500 transition"
+              className="bg-yellow-400 w-full py-3 rounded-xl font-semibold shadow-md hover:bg-yellow-500 transition"
             >
-              AI Analysis
+              Start AI Analysis
             </button>
 
             <div className="mt-4">
@@ -97,103 +99,100 @@ function App() {
         </div>
       )}
 
-      {/* ================= HISTORY ================= */}
+      {/* ================= RESULT ================= */}
       {page === "history" && (
-        <div className="p-4">
+        <div className="p-6">
 
-          <h2 className="text-2xl font-bold mb-4">Analysis Details</h2>
+          <h2 className="text-2xl font-bold mb-6">Analysis Result</h2>
 
           {score !== null ? (
-            <div className="bg-white rounded-2xl shadow-md p-6 text-center">
+            <div className="bg-white rounded-3xl shadow-lg p-6 text-center">
 
-              <p className="text-green-600 font-semibold mb-4">
-                ✔ Scanning Complete
-              </p>
+              <div className="bg-green-100 text-green-600 py-2 rounded-xl text-sm mb-6">
+                ✔ Scanning Completed Successfully
+              </div>
 
               <CircularScore score={score} />
 
-              <h3 className="mt-6 text-xl font-bold">
-                {score}/100 AI Resume Score
+              <h3 className="mt-6 text-2xl font-bold">
+                {score}/100 Resume Score
               </h3>
 
               {jobMatch && (
-                <div className="mt-6 text-left">
-                  <p className="text-green-600 mb-2">
-                    <strong>Matched Skills:</strong>{" "}
-                    {jobMatch.matchedSkills?.join(", ") || "None"}
-                  </p>
+                <div className="mt-6 text-left space-y-4">
 
-                  <p className="text-red-500">
-                    <strong>Missing Skills:</strong>{" "}
-                    {jobMatch.missingSkills?.join(", ") || "None"}
-                  </p>
+                  <div className="bg-green-50 p-4 rounded-xl">
+                    <p className="text-green-700 font-semibold">
+                      Matched Skills
+                    </p>
+                    <p className="text-sm mt-1">
+                      {jobMatch.matched?.join(", ") || "None"}
+                    </p>
+                  </div>
+
+                  <div className="bg-red-50 p-4 rounded-xl">
+                    <p className="text-red-600 font-semibold">
+                      Missing Skills
+                    </p>
+                    <p className="text-sm mt-1">
+                      {jobMatch.missing?.join(", ") || "None"}
+                    </p>
+                  </div>
+
                 </div>
               )}
 
               <button
                 onClick={() => setPage("home")}
-                className="bg-yellow-400 mt-6 w-full py-3 rounded-xl font-semibold"
+                className="bg-yellow-400 mt-8 w-full py-3 rounded-xl font-semibold shadow-md"
               >
-                Optimize Again
+                Analyze Another Resume
               </button>
 
             </div>
           ) : (
-            <p className="text-center mt-10">No analysis yet.</p>
+            <p className="text-center mt-20 text-gray-500">
+              No analysis yet.
+            </p>
           )}
         </div>
       )}
 
       {/* ================= TIPS ================= */}
       {page === "tips" && (
-        <div className="p-4">
-          <h2 className="text-2xl font-bold mb-4">Resume Tips</h2>
+        <div className="p-6">
+          <h2 className="text-2xl font-bold mb-6">Resume Tips</h2>
 
-          <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
-
-            <div>
-              <h3 className="font-semibold">✔ Use Keywords</h3>
-              <p className="text-gray-600">
-                Match your resume with job description keywords.
+          <div className="space-y-4">
+            <div className="bg-white p-5 rounded-2xl shadow-md">
+              <h3 className="font-semibold">Use Keywords</h3>
+              <p className="text-gray-600 text-sm mt-2">
+                Match resume content with job description keywords.
               </p>
             </div>
 
-            <div>
-              <h3 className="font-semibold">✔ Keep It Clean</h3>
-              <p className="text-gray-600">
-                Use simple fonts and proper spacing.
+            <div className="bg-white p-5 rounded-2xl shadow-md">
+              <h3 className="font-semibold">Add Achievements</h3>
+              <p className="text-gray-600 text-sm mt-2">
+                Use measurable results instead of generic tasks.
               </p>
             </div>
-
-            <div>
-              <h3 className="font-semibold">✔ Highlight Achievements</h3>
-              <p className="text-gray-600">
-                Show measurable results instead of responsibilities.
-              </p>
-            </div>
-
           </div>
         </div>
       )}
 
       {/* ================= PROFILE ================= */}
       {page === "profile" && (
-        <div className="p-4">
-          <h2 className="text-2xl font-bold mb-4">User Profile</h2>
-
-          <div className="bg-white p-6 rounded-2xl shadow-md text-center">
-
+        <div className="p-6 text-center">
+          <div className="bg-white p-6 rounded-3xl shadow-lg">
             <div className="w-20 h-20 bg-yellow-400 rounded-full mx-auto mb-4"></div>
-
-            <h3 className="text-lg font-semibold">Resume_IQ User</h3>
-            <p className="text-gray-600">Free Plan</p>
-
+            <h3 className="font-semibold text-lg">Resume_IQ User</h3>
+            <p className="text-gray-500 text-sm mt-1">Free Plan</p>
           </div>
         </div>
       )}
 
       <Navbar setPage={setPage} currentPage={page} />
-
     </div>
   );
 }
