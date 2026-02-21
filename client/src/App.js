@@ -1,46 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
-import {
-  FaHome,
-  FaHistory,
-  FaLightbulb,
-  FaCog,
-  FaMoon,
-  FaSun,
-  FaFileUpload,
-} from "react-icons/fa";
+import { FaFileUpload } from "react-icons/fa";
+import Navbar from "./components/Navbar";
 import CircularScore from "./components/CircularScore";
 import Loader from "./components/Loader";
+import InstallButton from "./components/InstallButton";
 
 function App() {
-  const [page, setPage] = useState("home");
-  const [darkMode, setDarkMode] = useState(false);
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
-  const [atsScore, setAtsScore] = useState(null);
-  const [matchScore, setMatchScore] = useState(null);
+  const [score, setScore] = useState(null);
+  const [jobMatch, setJobMatch] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState("home");
 
-  // Load theme on start
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    if (darkMode) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    }
-    setDarkMode(!darkMode);
-  };
-
+  // 🔍 Analyze Function
   const analyze = async () => {
     if (!file) {
       alert("Upload resume first");
@@ -53,67 +27,82 @@ function App() {
 
     try {
       setLoading(true);
-      const res = await axios.post("/api/analyze", formData);
+      setScore(null);
+      setJobMatch(null);
 
-      setAtsScore(res.data.atsScore);
-      setMatchScore(res.data.matchScore);
-    } catch {
+      const res = await axios.post("/api/analyze", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setScore(res.data.atsScore);
+
+      setJobMatch({
+        matchScore: res.data.matchScore,
+        matchedSkills: res.data.matchedSkills,
+        missingSkills: res.data.missingSkills,
+        aiAnalysis: res.data.aiAnalysis,
+      });
+
+    } catch (err) {
+      console.error(err);
       alert("Analysis failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const SidebarButton = ({ icon, name }) => (
-    <button
-      onClick={() => setPage(name)}
-      className={`flex items-center gap-3 p-3 rounded-lg transition ${
-        page === name
-          ? "bg-yellow-400 text-black"
-          : "hover:bg-gray-200 dark:hover:bg-gray-700"
-      }`}
-    >
-      {icon}
-      <span className="capitalize">{name}</span>
-    </button>
-  );
+  // 📄 DOWNLOAD PDF (NO INSTALL METHOD)
+  const downloadReport = () => {
+    if (!score) return;
+
+    const reportContent = `
+Resume_IQ - Analysis Report
+
+ATS Score: ${score}
+Job Match Score: ${jobMatch?.matchScore}%
+
+Matched Skills:
+${jobMatch?.matchedSkills?.join(", ") || "None"}
+
+Missing Skills:
+${jobMatch?.missingSkills?.join(", ") || "None"}
+
+AI Analysis:
+${jobMatch?.aiAnalysis || "Not Available"}
+`;
+
+    const newWindow = window.open("", "_blank");
+    newWindow.document.write(`
+      <html>
+        <head>
+          <title>Resume Report</title>
+        </head>
+        <body style="font-family: Arial; padding: 20px;">
+          <h2>Resume_IQ Report</h2>
+          <pre style="font-size: 15px; white-space: pre-wrap;">
+${reportContent}
+          </pre>
+        </body>
+      </html>
+    `);
+
+    newWindow.document.close();
+    newWindow.print();
+  };
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white transition-all duration-300">
+    <div className="min-h-screen bg-gray-100 p-4 pb-24">
 
-      {/* ===== Sidebar ===== */}
-      <div className="w-64 bg-white dark:bg-gray-800 shadow-lg p-5 hidden md:flex flex-col gap-4">
-        <h1 className="text-2xl font-bold text-yellow-500 mb-6">
-          Resume_IQ
-        </h1>
+      {/* ================= HOME PAGE ================= */}
+      {page === "home" && (
+        <>
+          <h1 className="text-2xl font-bold mb-6 text-center">
+            Resume_IQ
+          </h1>
 
-        <SidebarButton icon={<FaHome />} name="home" />
-        <SidebarButton icon={<FaHistory />} name="history" />
-        <SidebarButton icon={<FaLightbulb />} name="tips" />
-        <SidebarButton icon={<FaCog />} name="settings" />
-      </div>
-
-      {/* ===== Main Area ===== */}
-      <div className="flex-1 p-6">
-
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold capitalize">
-            {page}
-          </h2>
-
-          <button
-            onClick={toggleTheme}
-            className="flex items-center gap-2 bg-yellow-400 px-4 py-2 rounded-lg text-black"
-          >
-            {darkMode ? <FaSun /> : <FaMoon />}
-            {darkMode ? "Light Mode" : "Dark Mode"}
-          </button>
-        </div>
-
-        {/* ===== HOME ===== */}
-        {page === "home" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+          <div className="bg-white p-6 rounded-xl shadow-md">
             <div className="flex items-center gap-2 mb-4">
               <FaFileUpload className="text-yellow-400" />
               <span className="font-semibold">Upload Resume</span>
@@ -121,14 +110,14 @@ function App() {
 
             <input
               type="file"
-              accept=".pdf,.docx"
+              accept=".pdf,.docx,.jpg,.jpeg,.png"
               className="mb-4 w-full"
               onChange={(e) => setFile(e.target.files[0])}
             />
 
             <textarea
               placeholder="Paste Job Description (Optional)"
-              className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"
+              className="w-full p-2 border rounded mb-4"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -141,27 +130,76 @@ function App() {
               Start Analyzing
             </button>
 
-            {loading && <Loader />}
-
-            {atsScore && (
-              <div className="mt-6 text-center">
-                <CircularScore score={atsScore} />
-                <p className="mt-3 font-semibold">
-                  Match Score: {matchScore}%
-                </p>
-              </div>
-            )}
+            <InstallButton />
           </div>
-        )}
 
-        {/* ===== Other Pages Placeholder ===== */}
-        {page !== "home" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <p>Content coming soon...</p>
-          </div>
-        )}
+          {loading && <Loader />}
 
-      </div>
+          {score !== null && !loading && (
+            <div className="bg-white p-6 rounded-xl shadow-md mt-6">
+              <h2 className="text-center font-semibold mb-4">
+                ATS Resume Score
+              </h2>
+
+              <CircularScore score={score} />
+
+              {jobMatch && (
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-2 text-center">
+                    Job Match: {jobMatch.matchScore}%
+                  </h3>
+
+                  <p className="text-green-600 mt-2">
+                    <strong>Matched Skills:</strong>{" "}
+                    {jobMatch.matchedSkills?.length > 0
+                      ? jobMatch.matchedSkills.join(", ")
+                      : "None"}
+                  </p>
+
+                  <p className="text-red-500 mt-2">
+                    <strong>Missing Skills:</strong>{" "}
+                    {jobMatch.missingSkills?.length > 0
+                      ? jobMatch.missingSkills.join(", ")
+                      : "None"}
+                  </p>
+
+                  {/* 📄 PDF DOWNLOAD BUTTON */}
+                  <button
+                    onClick={downloadReport}
+                    className="bg-blue-600 text-white px-4 py-2 rounded mt-4 w-full"
+                  >
+                    Download PDF Report
+                  </button>
+
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ================= HISTORY PAGE ================= */}
+      {page === "history" && (
+        <div className="text-center mt-20 text-lg">
+          📄 Resume History (Coming Soon)
+        </div>
+      )}
+
+      {/* ================= TIPS PAGE ================= */}
+      {page === "tips" && (
+        <div className="text-center mt-20 text-lg">
+          ⭐ Resume Improvement Tips (Coming Soon)
+        </div>
+      )}
+
+      {/* ================= PROFILE PAGE ================= */}
+      {page === "profile" && (
+        <div className="text-center mt-20 text-lg">
+          👤 User Profile (Coming Soon)
+        </div>
+      )}
+
+      <Navbar setPage={setPage} currentPage={page} />
     </div>
   );
 }
