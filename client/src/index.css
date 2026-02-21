@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth theme transition */
 html {
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Enable dark mode */
+.dark {
+  background-color: #111827; /* gray-900 */
+  color: white;
+}
+
+/* Glass effect support */
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.dark .glass {
+  background: rgba(31, 41, 55, 0.6);
 }
