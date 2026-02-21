@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-function CircularScore({ score }) {
+function CircularScore({ score = 0 }) {
   const [progress, setProgress] = useState(0);
 
   const radius = 60;
@@ -8,26 +8,41 @@ function CircularScore({ score }) {
   const normalizedRadius = radius - stroke * 0.5;
   const circumference = normalizedRadius * 2 * Math.PI;
 
+  /* ================= SMOOTH ANIMATION ================= */
+
   useEffect(() => {
-    let start = 0;
+    let animationFrame;
+    let startTime;
 
-    const interval = setInterval(() => {
-      start += 1;
+    const duration = 800; // animation speed
 
-      if (start >= score) {
-        start = score;
-        clearInterval(interval);
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progressTime = timestamp - startTime;
+
+      const percentage = Math.min(
+        (progressTime / duration) * score,
+        score
+      );
+
+      setProgress(Math.floor(percentage));
+
+      if (progressTime < duration) {
+        animationFrame = requestAnimationFrame(animate);
       }
+    };
 
-      setProgress(start);
-    }, 15);
+    animationFrame = requestAnimationFrame(animate);
 
-    // Cleanup to prevent memory leaks
-    return () => clearInterval(interval);
+    return () => cancelAnimationFrame(animationFrame);
   }, [score]);
+
+  /* ================= STROKE OFFSET ================= */
 
   const strokeDashoffset =
     circumference - (progress / 100) * circumference;
+
+  /* ================= SCORE COLOR ================= */
 
   const getColor = () => {
     if (score < 40) return "#ef4444"; // red
@@ -48,20 +63,20 @@ function CircularScore({ score }) {
           cy={radius}
         />
 
-        {/* Progress circle */}
+        {/* Animated progress */}
         <circle
           stroke={getColor()}
           fill="transparent"
           strokeWidth={stroke}
           strokeDasharray={`${circumference} ${circumference}`}
-          style={{
-            strokeDashoffset,
-            transition: "stroke-dashoffset 0.5s ease",
-          }}
+          strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           r={normalizedRadius}
           cx={radius}
           cy={radius}
+          style={{
+            transition: "stroke-dashoffset 0.3s ease-out",
+          }}
         />
 
         {/* Score text */}
@@ -70,7 +85,7 @@ function CircularScore({ score }) {
           y="50%"
           textAnchor="middle"
           dy=".3em"
-          className="text-2xl font-bold fill-gray-800"
+          className="text-2xl font-bold fill-gray-800 dark:fill-white"
         >
           {progress}%
         </text>
