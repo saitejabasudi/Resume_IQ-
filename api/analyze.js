@@ -5,53 +5,72 @@ import fs from "fs";
 import OpenAI from "openai";
 
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+  api: { bodyParser: false },
 };
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-function extractSkills(text) {
-  const skillsDatabase = [
-    "javascript",
-    "react",
-    "node",
-    "express",
-    "mongodb",
-    "html",
-    "css",
-    "python",
-    "java",
-    "sql",
-    "aws",
-    "docker",
-    "git",
-    "typescript",
-  ];
+/* ================= SKILL DATABASE ================= */
 
-  const lowerText = text.toLowerCase();
+const skillsDatabase = [
+  "javascript","react","node","express","mongodb","html","css",
+  "python","java","sql","aws","docker","git","typescript",
+  "redux","nextjs","api","rest","graphql","firebase"
+];
 
-  return skillsDatabase.filter((skill) =>
-    lowerText.includes(skill)
+/* ================= IMPROVED ATS SCORING ================= */
+
+function calculateATSScore(resumeText, jobDescription) {
+  const text = resumeText.toLowerCase();
+  let score = 0;
+
+  // 1️⃣ Length Score (Max 15)
+  if (resumeText.length > 1500) score += 15;
+  else if (resumeText.length > 800) score += 10;
+  else score += 5;
+
+  // 2️⃣ Section Presence (Max 25)
+  const sections = ["experience", "projects", "skills", "education"];
+  sections.forEach(section => {
+    if (text.includes(section)) score += 6;
+  });
+
+  // 3️⃣ Bullet Points (Max 10)
+  const bulletCount = (resumeText.match(/•|-|\*/g) || []).length;
+  if (bulletCount > 10) score += 10;
+  else if (bulletCount > 5) score += 6;
+  else score += 3;
+
+  // 4️⃣ Skill Count (Max 20)
+  const foundSkills = skillsDatabase.filter(skill =>
+    text.includes(skill)
   );
+  score += Math.min(foundSkills.length * 2, 20);
+
+  // 5️⃣ Job Match Score Influence (Max 30)
+  if (jobDescription) {
+    const jd = jobDescription.toLowerCase();
+    const jobSkills = skillsDatabase.filter(skill =>
+      jd.includes(skill)
+    );
+
+    const matched = jobSkills.filter(skill =>
+      foundSkills.includes(skill)
+    );
+
+    const matchPercent = jobSkills.length
+      ? (matched.length / jobSkills.length) * 30
+      : 0;
+
+    score += matchPercent;
+  }
+
+  return Math.min(Math.round(score), 100);
 }
 
-function calculateATSScore(resumeText) {
-  let score = 50;
-
-  const lowerText = resumeText.toLowerCase();
-
-  if (resumeText.length > 2000) score += 10;
-  if (lowerText.includes("experience")) score += 10;
-  if (lowerText.includes("projects")) score += 10;
-  if (lowerText.includes("skills")) score += 10;
-  if (lowerText.includes("education")) score += 10;
-
-  return Math.min(score, 100);
-}
+/* ================= API HANDLER ================= */
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -78,7 +97,7 @@ export default async function handler(req, res) {
     let resumeText = "";
 
     try {
-      // Extract resume text
+      // Extract Resume Text
       if (fileType === "application/pdf") {
         const dataBuffer = fs.readFileSync(filePath);
         const pdfData = await pdfParse(dataBuffer);
@@ -87,91 +106,86 @@ export default async function handler(req, res) {
         fileType ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       ) {
-        const result = await mammoth.extractRawText({
-          path: filePath,
-        });
+        const result = await mammoth.extractRawText({ path: filePath });
         resumeText = result.value;
       } else {
-        return res.status(400).json({
-          error: "Unsupported file type",
-        });
+        return res.status(400).json({ error: "Unsupported file type" });
       }
 
-      // RULE-BASED LOGIC
-      const atsScore = calculateATSScore(resumeText);
+      /* ========= ATS ========= */
 
-      const resumeSkills = extractSkills(resumeText);
-      const jobSkills = extractSkills(jobDescription);
+      const atsScore = calculateATSScore(resumeText, jobDescription);
 
-      const matchedSkills = resumeSkills.filter((skill) =>
+      const resumeSkills = skillsDatabase.filter(skill =>
+        resumeText.toLowerCase().includes(skill)
+      );
+
+      const jobSkills = skillsDatabase.filter(skill =>
+        jobDescription.toLowerCase().includes(skill)
+      );
+
+      const matchedSkills = resumeSkills.filter(skill =>
         jobSkills.includes(skill)
       );
 
-      const missingSkills = jobSkills.filter(
-        (skill) => !resumeSkills.includes(skill)
+      const missingSkills = jobSkills.filter(skill =>
+        !resumeSkills.includes(skill)
       );
 
       const matchScore = jobSkills.length
-        ? Math.round(
-            (matchedSkills.length / jobSkills.length) * 100
-          )
+        ? Math.round((matchedSkills.length / jobSkills.length) * 100)
         : 0;
 
-      // 🔥 AI ANALYSIS
+      /* ========= AI ANALYSIS ========= */
+
       let aiAnalysis = "";
 
       try {
-        const aiResponse =
-          await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are a professional ATS resume analyzer and career coach.",
-              },
-              {
-                role: "user",
-                content: `
-Analyze this resume and compare it with the job description.
+        const aiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an expert ATS resume analyzer and hiring consultant.",
+            },
+            {
+              role: "user",
+              content: `
+Analyze this resume professionally.
 
 Resume:
-${resumeText}
+${resumeText.slice(0, 6000)}
 
 Job Description:
 ${jobDescription}
 
 Provide:
-1. Overall Resume Quality Feedback
-2. Key Strengths
-3. Key Weaknesses
-4. Specific Improvement Suggestions
-`,
-              },
-            ],
-            temperature: 0.7,
-          });
+1. Overall evaluation
+2. Strengths
+3. Weaknesses
+4. Improvement suggestions
+              `,
+            },
+          ],
+          temperature: 0.7,
+        });
 
-        aiAnalysis =
-          aiResponse.choices[0].message.content;
+        aiAnalysis = aiResponse.choices[0].message.content;
       } catch (aiError) {
-        console.error("AI Error:", aiError);
-        aiAnalysis =
-          "AI analysis temporarily unavailable.";
+        aiAnalysis = "AI analysis unavailable.";
       }
 
-      res.status(200).json({
+      return res.status(200).json({
         atsScore,
         matchScore,
         matchedSkills,
         missingSkills,
         aiAnalysis,
       });
+
     } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        error: "Processing failed",
-      });
+      return res.status(500).json({ error: "Processing failed" });
     }
   });
 }
