@@ -5,6 +5,8 @@ import {
   FaHistory,
   FaLightbulb,
   FaCog,
+  FaMoon,
+  FaSun,
   FaFileUpload,
 } from "react-icons/fa";
 import CircularScore from "./components/CircularScore";
@@ -12,20 +14,15 @@ import Loader from "./components/Loader";
 
 function App() {
   const [page, setPage] = useState("home");
+  const [darkMode, setDarkMode] = useState(false);
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [atsScore, setAtsScore] = useState(null);
   const [matchScore, setMatchScore] = useState(null);
-  const [matchedSkills, setMatchedSkills] = useState([]);
-  const [missingSkills, setMissingSkills] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [darkMode, setDarkMode] = useState(false);
 
+  // Load theme on start
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("resumeHistory")) || [];
-    setHistory(saved);
-
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") {
       setDarkMode(true);
@@ -33,7 +30,7 @@ function App() {
     }
   }, []);
 
-  const toggleDarkMode = () => {
+  const toggleTheme = () => {
     if (darkMode) {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
@@ -56,24 +53,10 @@ function App() {
 
     try {
       setLoading(true);
-
       const res = await axios.post("/api/analyze", formData);
 
       setAtsScore(res.data.atsScore);
       setMatchScore(res.data.matchScore);
-      setMatchedSkills(res.data.matchedSkills);
-      setMissingSkills(res.data.missingSkills);
-
-      const newEntry = {
-        date: new Date().toLocaleString(),
-        atsScore: res.data.atsScore,
-        matchScore: res.data.matchScore,
-      };
-
-      const updatedHistory = [newEntry, ...history];
-      setHistory(updatedHistory);
-      localStorage.setItem("resumeHistory", JSON.stringify(updatedHistory));
-
     } catch {
       alert("Analysis failed");
     } finally {
@@ -91,14 +74,14 @@ function App() {
       }`}
     >
       {icon}
-      <span className="font-medium capitalize">{name}</span>
+      <span className="capitalize">{name}</span>
     </button>
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white transition">
+    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white transition-all duration-300">
 
-      {/* ============ SIDEBAR ============ */}
+      {/* ===== Sidebar ===== */}
       <div className="w-64 bg-white dark:bg-gray-800 shadow-lg p-5 hidden md:flex flex-col gap-4">
         <h1 className="text-2xl font-bold text-yellow-500 mb-6">
           Resume_IQ
@@ -110,7 +93,7 @@ function App() {
         <SidebarButton icon={<FaCog />} name="settings" />
       </div>
 
-      {/* ============ MAIN CONTENT ============ */}
+      {/* ===== Main Area ===== */}
       <div className="flex-1 p-6">
 
         {/* Top Bar */}
@@ -120,14 +103,15 @@ function App() {
           </h2>
 
           <button
-            onClick={toggleDarkMode}
-            className="bg-yellow-400 px-4 py-2 rounded-lg"
+            onClick={toggleTheme}
+            className="flex items-center gap-2 bg-yellow-400 px-4 py-2 rounded-lg text-black"
           >
+            {darkMode ? <FaSun /> : <FaMoon />}
             {darkMode ? "Light Mode" : "Dark Mode"}
           </button>
         </div>
 
-        {/* ================= HOME ================= */}
+        {/* ===== HOME ===== */}
         {page === "home" && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex items-center gap-2 mb-4">
@@ -144,7 +128,7 @@ function App() {
 
             <textarea
               placeholder="Paste Job Description (Optional)"
-              className="w-full p-2 border rounded mb-4 dark:bg-gray-700"
+              className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -170,51 +154,10 @@ function App() {
           </div>
         )}
 
-        {/* ================= HISTORY ================= */}
-        {page === "history" && (
+        {/* ===== Other Pages Placeholder ===== */}
+        {page !== "home" && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            {history.length === 0 ? (
-              <p>No analysis history yet.</p>
-            ) : (
-              history.map((item, index) => (
-                <div
-                  key={index}
-                  className="border p-4 rounded-lg mb-3 dark:border-gray-600"
-                >
-                  <p><strong>Date:</strong> {item.date}</p>
-                  <p><strong>ATS:</strong> {item.atsScore}</p>
-                  <p><strong>Match:</strong> {item.matchScore}%</p>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* ================= TIPS ================= */}
-        {page === "tips" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Add measurable achievements.</li>
-              <li>Use job description keywords.</li>
-              <li>Keep resume ATS-friendly.</li>
-              <li>Highlight relevant skills.</li>
-              <li>Keep resume clean and concise.</li>
-            </ul>
-          </div>
-        )}
-
-        {/* ================= SETTINGS ================= */}
-        {page === "settings" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <button
-              onClick={() => {
-                localStorage.removeItem("resumeHistory");
-                setHistory([]);
-              }}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg"
-            >
-              Clear History
-            </button>
+            <p>Content coming soon...</p>
           </div>
         )}
 
