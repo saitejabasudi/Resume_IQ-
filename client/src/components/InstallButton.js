@@ -19,6 +19,11 @@ function InstallButton() {
     window.addEventListener("beforeinstallprompt", beforeInstallHandler);
     window.addEventListener("appinstalled", appInstalledHandler);
 
+    // Hide button if already installed (standalone mode)
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setVisible(false);
+    }
+
     return () => {
       window.removeEventListener("beforeinstallprompt", beforeInstallHandler);
       window.removeEventListener("appinstalled", appInstalledHandler);
@@ -33,9 +38,7 @@ function InstallButton() {
     const { outcome } = await deferredPrompt.userChoice;
 
     if (outcome === "accepted") {
-      console.log("User accepted install");
-    } else {
-      console.log("User dismissed install");
+      console.log("App installed");
     }
 
     setDeferredPrompt(null);
@@ -47,9 +50,12 @@ function InstallButton() {
   return (
     <button
       onClick={installApp}
-      className="bg-black text-white w-full py-2 rounded-lg mt-4 hover:bg-gray-800 transition"
+      className="w-full py-2 mt-4 rounded-lg font-semibold transition 
+                 bg-yellow-400 hover:bg-yellow-500 
+                 text-black 
+                 dark:bg-yellow-500 dark:hover:bg-yellow-400"
     >
-      Install Resume_IQ App
+      📲 Install Resume_IQ App
     </button>
   );
 }
