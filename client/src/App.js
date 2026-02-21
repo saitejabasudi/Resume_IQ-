@@ -17,12 +17,38 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
   const [history, setHistory] = useState([]);
+  const [darkMode, setDarkMode] = useState(false);
 
-  // Load history from localStorage
+  // Load history
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory")) || [];
     setHistory(saved);
   }, []);
+
+  // Load theme
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      setDarkMode(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    if (darkMode) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    }
+    setDarkMode(!darkMode);
+  };
+
+  const clearHistory = () => {
+    localStorage.removeItem("resumeHistory");
+    setHistory([]);
+  };
 
   const analyze = async () => {
     if (!file) {
@@ -37,9 +63,7 @@ function App() {
     try {
       setLoading(true);
 
-      const res = await axios.post("/api/analyze", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.post("/api/analyze", formData);
 
       setAtsScore(res.data.atsScore);
       setMatchScore(res.data.matchScore);
@@ -57,7 +81,7 @@ function App() {
       setHistory(updatedHistory);
       localStorage.setItem("resumeHistory", JSON.stringify(updatedHistory));
 
-    } catch (err) {
+    } catch {
       alert("Analysis failed");
     } finally {
       setLoading(false);
@@ -65,7 +89,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 pb-24">
+    <div className="min-h-screen p-4 pb-24 bg-gray-100 dark:bg-gray-900 dark:text-white transition">
 
       {/* ================= HOME ================= */}
       {page === "home" && (
@@ -74,7 +98,7 @@ function App() {
             Resume_IQ
           </h1>
 
-          <div className="bg-white p-6 rounded-xl shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex items-center gap-2 mb-4">
               <FaFileUpload className="text-yellow-400" />
               <span className="font-semibold">Upload Resume</span>
@@ -89,7 +113,7 @@ function App() {
 
             <textarea
               placeholder="Paste Job Description (Optional)"
-              className="w-full p-2 border rounded mb-4"
+              className="w-full p-2 border rounded mb-4 dark:bg-gray-700"
               rows="4"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -108,11 +132,7 @@ function App() {
           {loading && <Loader />}
 
           {atsScore !== null && !loading && (
-            <div className="bg-white p-6 rounded-xl shadow-md mt-6">
-              <h2 className="text-center font-semibold mb-4">
-                ATS Resume Score
-              </h2>
-
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-6">
               <div className="flex justify-center">
                 <CircularScore score={atsScore} />
               </div>
@@ -122,7 +142,7 @@ function App() {
               </div>
 
               <div className="mt-4">
-                <p className="text-green-600">
+                <p className="text-green-500">
                   <strong>Matched Skills:</strong>{" "}
                   {matchedSkills.length > 0
                     ? matchedSkills.join(", ")
@@ -140,7 +160,7 @@ function App() {
               {aiAnalysis && (
                 <div className="mt-6 whitespace-pre-wrap">
                   <h3 className="font-semibold mb-2">
-                    AI Professional Feedback
+                    AI Feedback
                   </h3>
                   {aiAnalysis}
                 </div>
@@ -152,20 +172,20 @@ function App() {
 
       {/* ================= HISTORY ================= */}
       {page === "history" && (
-        <div className="bg-white p-6 rounded-xl shadow-md">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-bold mb-4 text-center">
             Analysis History
           </h2>
 
           {history.length === 0 ? (
             <p className="text-center text-gray-500">
-              No analysis history yet.
+              No history yet.
             </p>
           ) : (
             history.map((item, index) => (
               <div
                 key={index}
-                className="border p-4 rounded-lg mb-3"
+                className="border p-4 rounded-lg mb-3 dark:border-gray-600"
               >
                 <p><strong>Date:</strong> {item.date}</p>
                 <p><strong>ATS Score:</strong> {item.atsScore}</p>
@@ -178,33 +198,44 @@ function App() {
 
       {/* ================= TIPS ================= */}
       {page === "tips" && (
-        <div className="bg-white p-6 rounded-xl shadow-md">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
           <h2 className="text-xl font-bold mb-4 text-center">
-            Resume Improvement Tips
+            Resume Tips
           </h2>
 
           <ul className="list-disc pl-6 space-y-2">
-            <li>Add measurable achievements (e.g., Increased sales by 30%).</li>
-            <li>Use keywords from the job description.</li>
-            <li>Keep formatting simple and ATS-friendly.</li>
-            <li>Include relevant technical skills.</li>
-            <li>Keep resume length 1–2 pages maximum.</li>
+            <li>Add measurable achievements.</li>
+            <li>Use job description keywords.</li>
+            <li>Keep resume ATS-friendly.</li>
+            <li>Highlight relevant skills.</li>
+            <li>Keep it clean and professional.</li>
           </ul>
         </div>
       )}
 
-      {/* ================= PROFILE ================= */}
+      {/* ================= SETTINGS ================= */}
       {page === "profile" && (
-        <div className="bg-white p-6 rounded-xl shadow-md text-center">
-          <h2 className="text-xl font-bold mb-4">
-            About Resume_IQ
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+          <h2 className="text-xl font-bold mb-6 text-center">
+            Settings
           </h2>
 
-          <p>
-            Resume_IQ is an AI-powered resume analyzer that evaluates
-            resumes, calculates ATS scores, and provides job match
-            analysis with professional feedback.
-          </p>
+          <div className="flex justify-between items-center mb-6">
+            <span>Dark Mode</span>
+            <button
+              onClick={toggleDarkMode}
+              className="bg-yellow-400 px-4 py-1 rounded-lg"
+            >
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </button>
+          </div>
+
+          <button
+            onClick={clearHistory}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg w-full"
+          >
+            Clear Analysis History
+          </button>
         </div>
       )}
 
