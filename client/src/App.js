@@ -1,32 +1,31 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaFileUpload } from "react-icons/fa";
-import Navbar from "./components/Navbar";
-import Loader from "./components/Loader";
-import InstallButton from "./components/InstallButton";
+import {
+  FaHome,
+  FaHistory,
+  FaLightbulb,
+  FaCog,
+  FaFileUpload,
+} from "react-icons/fa";
 import CircularScore from "./components/CircularScore";
+import Loader from "./components/Loader";
 
 function App() {
+  const [page, setPage] = useState("home");
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [atsScore, setAtsScore] = useState(null);
   const [matchScore, setMatchScore] = useState(null);
   const [matchedSkills, setMatchedSkills] = useState([]);
   const [missingSkills, setMissingSkills] = useState([]);
-  const [aiAnalysis, setAiAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState("home");
   const [history, setHistory] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
 
-  // Load history
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory")) || [];
     setHistory(saved);
-  }, []);
 
-  // Load theme
-  useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") {
       setDarkMode(true);
@@ -43,11 +42,6 @@ function App() {
       localStorage.setItem("theme", "dark");
     }
     setDarkMode(!darkMode);
-  };
-
-  const clearHistory = () => {
-    localStorage.removeItem("resumeHistory");
-    setHistory([]);
   };
 
   const analyze = async () => {
@@ -69,7 +63,6 @@ function App() {
       setMatchScore(res.data.matchScore);
       setMatchedSkills(res.data.matchedSkills);
       setMissingSkills(res.data.missingSkills);
-      setAiAnalysis(res.data.aiAnalysis);
 
       const newEntry = {
         date: new Date().toLocaleString(),
@@ -88,16 +81,54 @@ function App() {
     }
   };
 
+  const SidebarButton = ({ icon, name }) => (
+    <button
+      onClick={() => setPage(name)}
+      className={`flex items-center gap-3 p-3 rounded-lg transition ${
+        page === name
+          ? "bg-yellow-400 text-black"
+          : "hover:bg-gray-200 dark:hover:bg-gray-700"
+      }`}
+    >
+      {icon}
+      <span className="font-medium capitalize">{name}</span>
+    </button>
+  );
+
   return (
-    <div className="min-h-screen p-4 pb-24 bg-gray-100 dark:bg-gray-900 dark:text-white transition">
+    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white transition">
 
-      {/* ================= HOME ================= */}
-      {page === "home" && (
-        <>
-          <h1 className="text-2xl font-bold mb-6 text-center">
-            Resume_IQ
-          </h1>
+      {/* ============ SIDEBAR ============ */}
+      <div className="w-64 bg-white dark:bg-gray-800 shadow-lg p-5 hidden md:flex flex-col gap-4">
+        <h1 className="text-2xl font-bold text-yellow-500 mb-6">
+          Resume_IQ
+        </h1>
 
+        <SidebarButton icon={<FaHome />} name="home" />
+        <SidebarButton icon={<FaHistory />} name="history" />
+        <SidebarButton icon={<FaLightbulb />} name="tips" />
+        <SidebarButton icon={<FaCog />} name="settings" />
+      </div>
+
+      {/* ============ MAIN CONTENT ============ */}
+      <div className="flex-1 p-6">
+
+        {/* Top Bar */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold capitalize">
+            {page}
+          </h2>
+
+          <button
+            onClick={toggleDarkMode}
+            className="bg-yellow-400 px-4 py-2 rounded-lg"
+          >
+            {darkMode ? "Light Mode" : "Dark Mode"}
+          </button>
+        </div>
+
+        {/* ================= HOME ================= */}
+        {page === "home" && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex items-center gap-2 mb-4">
               <FaFileUpload className="text-yellow-400" />
@@ -126,120 +157,68 @@ function App() {
               Start Analyzing
             </button>
 
-            <InstallButton />
-          </div>
+            {loading && <Loader />}
 
-          {loading && <Loader />}
-
-          {atsScore !== null && !loading && (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-6">
-              <div className="flex justify-center">
+            {atsScore && (
+              <div className="mt-6 text-center">
                 <CircularScore score={atsScore} />
-              </div>
-
-              <div className="mt-4 text-center font-semibold">
-                Job Match Score: {matchScore}%
-              </div>
-
-              <div className="mt-4">
-                <p className="text-green-500">
-                  <strong>Matched Skills:</strong>{" "}
-                  {matchedSkills.length > 0
-                    ? matchedSkills.join(", ")
-                    : "None"}
-                </p>
-
-                <p className="text-red-500 mt-2">
-                  <strong>Missing Skills:</strong>{" "}
-                  {missingSkills.length > 0
-                    ? missingSkills.join(", ")
-                    : "None"}
+                <p className="mt-3 font-semibold">
+                  Match Score: {matchScore}%
                 </p>
               </div>
+            )}
+          </div>
+        )}
 
-              {aiAnalysis && (
-                <div className="mt-6 whitespace-pre-wrap">
-                  <h3 className="font-semibold mb-2">
-                    AI Feedback
-                  </h3>
-                  {aiAnalysis}
+        {/* ================= HISTORY ================= */}
+        {page === "history" && (
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            {history.length === 0 ? (
+              <p>No analysis history yet.</p>
+            ) : (
+              history.map((item, index) => (
+                <div
+                  key={index}
+                  className="border p-4 rounded-lg mb-3 dark:border-gray-600"
+                >
+                  <p><strong>Date:</strong> {item.date}</p>
+                  <p><strong>ATS:</strong> {item.atsScore}</p>
+                  <p><strong>Match:</strong> {item.matchScore}%</p>
                 </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
+              ))
+            )}
+          </div>
+        )}
 
-      {/* ================= HISTORY ================= */}
-      {page === "history" && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-bold mb-4 text-center">
-            Analysis History
-          </h2>
+        {/* ================= TIPS ================= */}
+        {page === "tips" && (
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Add measurable achievements.</li>
+              <li>Use job description keywords.</li>
+              <li>Keep resume ATS-friendly.</li>
+              <li>Highlight relevant skills.</li>
+              <li>Keep resume clean and concise.</li>
+            </ul>
+          </div>
+        )}
 
-          {history.length === 0 ? (
-            <p className="text-center text-gray-500">
-              No history yet.
-            </p>
-          ) : (
-            history.map((item, index) => (
-              <div
-                key={index}
-                className="border p-4 rounded-lg mb-3 dark:border-gray-600"
-              >
-                <p><strong>Date:</strong> {item.date}</p>
-                <p><strong>ATS Score:</strong> {item.atsScore}</p>
-                <p><strong>Match Score:</strong> {item.matchScore}%</p>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* ================= TIPS ================= */}
-      {page === "tips" && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-bold mb-4 text-center">
-            Resume Tips
-          </h2>
-
-          <ul className="list-disc pl-6 space-y-2">
-            <li>Add measurable achievements.</li>
-            <li>Use job description keywords.</li>
-            <li>Keep resume ATS-friendly.</li>
-            <li>Highlight relevant skills.</li>
-            <li>Keep it clean and professional.</li>
-          </ul>
-        </div>
-      )}
-
-      {/* ================= SETTINGS ================= */}
-      {page === "profile" && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-bold mb-6 text-center">
-            Settings
-          </h2>
-
-          <div className="flex justify-between items-center mb-6">
-            <span>Dark Mode</span>
+        {/* ================= SETTINGS ================= */}
+        {page === "settings" && (
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <button
-              onClick={toggleDarkMode}
-              className="bg-yellow-400 px-4 py-1 rounded-lg"
+              onClick={() => {
+                localStorage.removeItem("resumeHistory");
+                setHistory([]);
+              }}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg"
             >
-              {darkMode ? "Light Mode" : "Dark Mode"}
+              Clear History
             </button>
           </div>
+        )}
 
-          <button
-            onClick={clearHistory}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg w-full"
-          >
-            Clear Analysis History
-          </button>
-        </div>
-      )}
-
-      <Navbar setPage={setPage} currentPage={page} />
+      </div>
     </div>
   );
 }
