@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FaFileUpload } from "react-icons/fa";
 import Navbar from "./components/Navbar";
@@ -16,6 +16,13 @@ function App() {
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState("home");
+  const [history, setHistory] = useState([]);
+
+  // Load history from localStorage
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("resumeHistory")) || [];
+    setHistory(saved);
+  }, []);
 
   const analyze = async () => {
     if (!file) {
@@ -29,16 +36,9 @@ function App() {
 
     try {
       setLoading(true);
-      setAtsScore(null);
-      setMatchScore(null);
-      setMatchedSkills([]);
-      setMissingSkills([]);
-      setAiAnalysis("");
 
       const res = await axios.post("/api/analyze", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setAtsScore(res.data.atsScore);
@@ -47,8 +47,17 @@ function App() {
       setMissingSkills(res.data.missingSkills);
       setAiAnalysis(res.data.aiAnalysis);
 
+      const newEntry = {
+        date: new Date().toLocaleString(),
+        atsScore: res.data.atsScore,
+        matchScore: res.data.matchScore,
+      };
+
+      const updatedHistory = [newEntry, ...history];
+      setHistory(updatedHistory);
+      localStorage.setItem("resumeHistory", JSON.stringify(updatedHistory));
+
     } catch (err) {
-      console.error(err);
       alert("Analysis failed");
     } finally {
       setLoading(false);
@@ -58,6 +67,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 p-4 pb-24">
 
+      {/* ================= HOME ================= */}
       {page === "home" && (
         <>
           <h1 className="text-2xl font-bold mb-6 text-center">
@@ -97,10 +107,8 @@ function App() {
 
           {loading && <Loader />}
 
-          {/* RESULTS SECTION */}
           {atsScore !== null && !loading && (
             <div className="bg-white p-6 rounded-xl shadow-md mt-6">
-
               <h2 className="text-center font-semibold mb-4">
                 ATS Resume Score
               </h2>
@@ -109,13 +117,11 @@ function App() {
                 <CircularScore score={atsScore} />
               </div>
 
-              <div className="mt-6 text-center">
-                <h3 className="font-semibold">
-                  Job Match Score: {matchScore}%
-                </h3>
+              <div className="mt-4 text-center font-semibold">
+                Job Match Score: {matchScore}%
               </div>
 
-              <div className="mt-6">
+              <div className="mt-4">
                 <p className="text-green-600">
                   <strong>Matched Skills:</strong>{" "}
                   {matchedSkills.length > 0
@@ -130,19 +136,76 @@ function App() {
                     : "None"}
                 </p>
               </div>
-            </div>
-          )}
 
-          {/* AI ANALYSIS */}
-          {aiAnalysis && !loading && (
-            <div className="bg-white p-6 rounded-xl shadow-md mt-6 whitespace-pre-wrap">
-              <h2 className="font-semibold mb-4 text-center">
-                AI Professional Feedback
-              </h2>
-              {aiAnalysis}
+              {aiAnalysis && (
+                <div className="mt-6 whitespace-pre-wrap">
+                  <h3 className="font-semibold mb-2">
+                    AI Professional Feedback
+                  </h3>
+                  {aiAnalysis}
+                </div>
+              )}
             </div>
           )}
         </>
+      )}
+
+      {/* ================= HISTORY ================= */}
+      {page === "history" && (
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <h2 className="text-xl font-bold mb-4 text-center">
+            Analysis History
+          </h2>
+
+          {history.length === 0 ? (
+            <p className="text-center text-gray-500">
+              No analysis history yet.
+            </p>
+          ) : (
+            history.map((item, index) => (
+              <div
+                key={index}
+                className="border p-4 rounded-lg mb-3"
+              >
+                <p><strong>Date:</strong> {item.date}</p>
+                <p><strong>ATS Score:</strong> {item.atsScore}</p>
+                <p><strong>Match Score:</strong> {item.matchScore}%</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ================= TIPS ================= */}
+      {page === "tips" && (
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <h2 className="text-xl font-bold mb-4 text-center">
+            Resume Improvement Tips
+          </h2>
+
+          <ul className="list-disc pl-6 space-y-2">
+            <li>Add measurable achievements (e.g., Increased sales by 30%).</li>
+            <li>Use keywords from the job description.</li>
+            <li>Keep formatting simple and ATS-friendly.</li>
+            <li>Include relevant technical skills.</li>
+            <li>Keep resume length 1–2 pages maximum.</li>
+          </ul>
+        </div>
+      )}
+
+      {/* ================= PROFILE ================= */}
+      {page === "profile" && (
+        <div className="bg-white p-6 rounded-xl shadow-md text-center">
+          <h2 className="text-xl font-bold mb-4">
+            About Resume_IQ
+          </h2>
+
+          <p>
+            Resume_IQ is an AI-powered resume analyzer that evaluates
+            resumes, calculates ATS scores, and provides job match
+            analysis with professional feedback.
+          </p>
+        </div>
       )}
 
       <Navbar setPage={setPage} currentPage={page} />
